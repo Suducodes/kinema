@@ -25,3 +25,5 @@ web/dist/
 *.log
 *_tracked_states.sto
 blender/*.blend
+
+.pages/
