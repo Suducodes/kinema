@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inside the Knee · KINEMA</title>
+  <meta name="description" content="OpenSim knee mechanics: a healthy knee beside one with torn ACL, PCL and LCL and a stretched MCL, put through the clinical laxity tests." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1113'/%3E%3Cpath d='M9 25l4-9 3 4 3-11 4 16' fill='none' stroke='%23e9e4d8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script type="module" crossorigin src="./assets/knee-BCWlbZ6S.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/studio-Cl8UDvlE.js">
+  <link rel="stylesheet" crossorigin href="./assets/studio-LynM0-so.css">
+  <link rel="stylesheet" crossorigin href="./assets/knee-IQ8rrBpP.css">
+</head>
+<body class="knee-page">
+  <canvas id="stage"></canvas>
+  <div class="loading" id="loading"><span>Loading the knee</span><i></i></div>
+
+  <header class="mast">
+    <div class="eyebrow">KINEMA <b>·</b> OpenSim JAM knee mechanics</div>
+    <h1>Inside the Knee</h1>
+    <p>Left, a healthy knee. Right, <span class="w">ACL, PCL and LCL torn, MCL stretched</span>. Same clinical tests,
+      every movement solved by OpenSim physics.</p>
+  </header>
+
+  <nav class="shots" aria-label="Test and view">
+    <div class="seg" id="test">
+      <button data-test="lachman" aria-pressed="true">Lachman</button>
+      <button data-test="post_drawer">Post. drawer</button>
+      <button data-test="varus">Varus</button>
+      <button data-test="valgus">Valgus</button>
+      <button data-test="flexion">Bending</button>
+    </div>
+    <div class="seg" id="view">
+      <button data-view="three" aria-pressed="true">3/4</button>
+      <button data-view="front">Front</button>
+      <button data-view="back">Back</button>
+      <button data-view="below">Below</button>
+    </div>
+    <div class="seg" id="bone">
+      <button data-bone="glass" aria-pressed="true">Glass bone</button>
+      <button data-bone="solid">Solid</button>
+    </div>
+  </nav>
+
+  <aside class="readout" id="readout">
+    <div class="test-card"><span>This test checks <b id="test-checks">the ACL</b></span><p id="test-what"></p><p class="rest" id="test-rest"></p></div>
+    <div class="cols"><span></span><b class="h">Healthy</b><b class="w">Injured</b></div>
+    <div class="rows" id="rows"></div>
+    <div class="phase"><span>Applied load</span><b id="load" class="load">–</b></div>
+  </aside>
+
+  <section class="legend" id="legend">
+    <header><span>Ligaments</span><em>force now · healthy / injured</em></header>
+    <div id="legend-rows"></div>
+    <footer><span class="ramp"></span>slack → taut (8%+ strain) <span class="sep">·</span> <i class="stub"></i> torn stump</footer>
+  </section>
+
+  <section class="dock">
+    <div class="transport">
+      <button class="icon" id="play" aria-label="Pause">❚❚</button>
+      <div class="seg" id="speed">
+        <button data-speed="1" aria-pressed="true">1×</button>
+        <button data-speed="0.5">½×</button>
+        <button data-speed="0.25">¼×</button>
+      </div>
+      <div class="timeline" id="timeline"><div class="phases" id="phases"></div><div class="head" id="head"></div></div>
+      <span class="clock" id="clock">0.00 s</span>
+    </div>
+    <div class="chart wide"><header><span id="chart-title">Shin slide (mm)</span><em><i class="kh"></i>healthy <i class="ki"></i>injured</em></header>
+      <canvas id="chart"></canvas></div>
+  </section>
+
+  <nav class="extras">
+    <button id="open-about" class="accent">What happened</button>
+    <button id="open-method">Method &amp; limits</button>
+    <a class="btn" href="./">← Twin Walkers</a>
+  </nav>
+
+  <div class="tip" id="tip" hidden></div>
+
+  <dialog id="about" class="sheet method findings">
+    <div class="body">
+      <h2>What happened in this knee</h2>
+      <p class="lede">Four ligaments hold the shin bone under the thigh bone. This injury took out three of them.</p>
+      <div class="steps">
+        <div><b>ACL · torn</b><span>Runs diagonally inside the joint and stops the shin sliding <b>forward</b>. In the Lachman test the healthy
+          knee moves a few millimetres; without the ACL the shin slides much further, and already sits forward at rest.</span></div>
+        <div><b>PCL · torn</b><span>The thicker cruciate behind it, stopping the shin sagging <b>backward</b>. The posterior drawer test
+          pushes the bent knee back: the injured knee gives several times more.</span></div>
+        <div><b>LCL · torn</b><span>On the outer side, from thigh bone to fibula. It keeps the <b>outer joint closed</b> when the knee is bent
+          inward (varus). Without it the outer side opens about three times as far.</span></div>
+        <div><b>MCL · stretched</b><span>On the inner side. Still there but looser, it now carries far more than its share in every test,
+          because the ligaments that used to help are gone.</span></div>
+      </div>
+      <h3>What to look for</h3>
+      <ul class="work">
+        <li><b>Colour is strain:</b> grey bundles are slack, gold to red bundles are pulled tight. Watch which ones light up in each test.</li>
+        <li><b>Red stumps</b> are the torn ligaments at their real attachment points: they carry nothing.</li>
+        <li><b>The numbers</b> on the right compare both knees against the healthy knee at rest.</li>
+        <li><b>Hover a ligament</b> (or a name in the list) to see its strain and force.</li>
+      </ul>
+      <h3>Please read this</h3>
+      <p>This is a <b>generic adult knee</b> injured to match the description, used to understand the mechanics. It is not anyone's own knee,
+        it is not a diagnosis, and it says nothing about how a particular person will heal or recover. Treatment and rehab decisions belong to
+        the surgeon and physiotherapist.</p>
+    </div>
+    <form method="dialog"><button>Close</button></form>
+  </dialog>
+
+  <dialog id="method" class="sheet method">
+    <div class="body">
+      <h2>Method &amp; limits</h2>
+      <h3>Model</h3>
+      <p>The Lenhart et al. 2015 knee (OpenSim JAM, Apache 2.0): a 6-degree-of-freedom tibiofemoral and patellofemoral joint built from MRI,
+        76 ligament bundles (Blankevoort 1991 model, wrapping around the bones), elastic-foundation cartilage contact, and the lower-limb muscles
+        held at minimal activation.</p>
+      <h3>Simulations</h3>
+      <p>Forward simulations with the JAM <i>forsim</i> tool: the knee settles straight, bends to the test angle, holds, then a load ramps
+        on over one second (Lachman 100 N forward at 25°, posterior drawer 100 N back at 90°, varus / valgus 10 N·m at 20°; bending
+        0→90° with no load). Our healthy Lachman reproduces the published OpenSim JAM example exactly (5.9 mm under 100 N).</p>
+      <h3>Injury</h3>
+      <p>Grade 3 = complete tear, modelled as removing every ACL (12), PCL (10) and LCL (4) bundle. The stretched MCL is an
+        <b>illustrative assumption</b>: superficial and deep MCL bundles 6% longer before they tighten and half as stiff.</p>
+      <h3>Limits</h3>
+      <ul>
+        <li><b>No menisci</b> in this model, and the muscles are kept nearly relaxed. Real people tense up to protect an injured knee, so
+          the injured knee's millimetres here are larger than a real knee would show. Read the <b>pattern</b>, not the exact numbers.</li>
+        <li>One generic knee geometry. Ligament properties vary between people.</li>
+        <li>Mechanics only: nothing about healing, surgery or recovery time.</li>
+      </ul>
+      <h3>Credits</h3>
+      <p>Lenhart, Kaiser, Smith &amp; Thelen 2015, Ann Biomed Eng 43:2675. OpenSim JAM by Colin Smith. OpenSim (Stanford). Rendering three.js.</p>
+    </div>
+    <form method="dialog"><button>Close</button></form>
+  </dialog>
+
+</body>
+</html>
