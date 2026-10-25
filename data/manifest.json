@@ -1,0 +1,6 @@
+{
+    "healthy":  "dev_healthy",
+    "weak":  "dev_weak",
+    "status":  "Development data: proof-of-concept runs on the original 2D model (gastrocnemius path bug, solver limits touched). Research-grade runs are being computed.",
+    "model":  "2D_gait.osim (original, POC)"
+}
