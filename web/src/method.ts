@@ -3,6 +3,7 @@ interface Manifest {
   healthy: string; weak: string; status: string;
   model: string; validation?: Record<string, { rmse: number; r: number; within_1sd_pct: number; within_2sd_pct: number }>;
   checks?: string[];
+  dial?: { s: number; clip: string }[];
 }
 
 const LABEL: Record<string, string> = {
@@ -26,6 +27,13 @@ export function methodHtml(m: Manifest, ref: { n: number; source: string }) {
   ±5° range, because a free 2D pelvis rocks unrealistically. The weak twin is the same body with the soleus and gastrocnemius (both legs) at 40&nbsp;%
   of their maximum isometric force. Every compensation you see emerged from the optimisation, not from animation.</p>
   <p>Model: ${m.model}</p>
+  <h3>Weakness dial, atlas, X-ray</h3>
+  <p><b>Dial:</b> calf strength was solved at ${m.dial?.length ? m.dial.map((d) => `${Math.round(d.s * 100)}`).join(' / ') : '100 / 40'}&nbsp;%
+  (dots on the dial). Between two solved runs the walker is <b>blended</b> (same gait phase, positions and rotations
+  interpolated). That is a visual interpolation, not a new simulation. <b>Atlas:</b> each card is one further predictive
+  simulation with another muscle group at 40&nbsp;%, same settings, warm-started from the healthy twin; only the calf twins
+  carry the full robustness checks. <b>X-ray:</b> muscle colour is tendon force as a share of the healthy muscle's maximum;
+  arrows are the ground reaction force at the centre of pressure.</p>
   ${m.checks?.length ? `<h3>Checks passed</h3><ul>${m.checks.map((c) => `<li>${c}</li>`).join('')}</ul>` : ''}
   ${rows ? `<h3>Healthy twin vs real walkers</h3>
   <p>Compared with ${ref.n} young adults walking on a treadmill at ~1.2&nbsp;m/s (${ref.source}).</p>

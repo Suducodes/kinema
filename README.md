@@ -8,15 +8,24 @@ thigh and hip taking over) emerges from the physics.
 
 **Live viewer:** https://suducodes.github.io/kinema/
 
+## In the viewer
+
+- **Weakness dial:** drag calf strength from 100% to 20%. The solved levels are 100 / 80 / 60 / 40 / 20%; between them the walker is blended at matched gait phase.
+- **Compensation atlas:** one card per weakened muscle group (40%), each its own predictive simulation, with an activation fingerprint against the healthy walker. Click a card to make it walk.
+- **Muscle map:** heat strips of every right-leg muscle across the gait cycle, healthy against the right twin.
+- **X-ray load:** glass bones, muscles coloured by tendon force, and ground reaction force arrows.
+- **Intro:** a short camera move with three captions on first visit.
+
 ## Status
 
 | Part | State |
 |---|---|
 | Simulation pipeline (Moco, 2D model) | Working; reproduces the official OpenSim example bit-for-bit (objective 0.13507) |
 | Gastrocnemius path fix (`sim/fix_gastroc.py`) | Done; knee moment arm at 90° flexion −2.21 cm vs reference −1.61 cm (bug: −0.14 cm) |
-| Research-grade runs (wide limits, fixed + self-selected speed, robustness, mesh refinement) | Running (`sim/batch.py`) |
-| Validation vs real walkers (`sim/validate.py`, Fukuchi 2018, n = 23) | Baseline done on the original model; fixed-model validation pending |
-| Viewer data | Currently the proof-of-concept runs (original model); will be replaced by the research-grade runs |
+| Final twins (`sb_*`: wide joints, pelvis ±5°, trunk-stability weight 0.003, 1.2 m/s) | Done; 6/6 converged, alternate guess and 2× mesh agree within 0.3%; weak/healthy effort 3.15× |
+| Validation vs real walkers (`sim/validate.py`, Fukuchi 2018, n = 23) | Healthy twin: hip 10.6°, knee 14.1°, ankle 3.4° RMSE; hip moment r = 0.97 |
+| Self-selected speed | Dropped for now: an effort-only cost makes the walker creep (~0.45 m/s); needs a metabolic cost with a resting term |
+| Viewer data | Final twins, plus the weakness-dial levels and atlas runs |
 
 ## Pipeline
 
@@ -25,8 +34,11 @@ sim/predict.py      Moco predictive gait (official example, parameterised; --reg
 sim/fix_gastroc.py  condyle wrap + origin fix for the 2D model's gastrocnemius
 sim/batch.py        4 conditions x (base, alternate initial guess, 2x mesh)
 sim/validate.py     simulated healthy gait vs Fukuchi 2018 (RMSE, r, % within ±1/±2 SD)
+sim/sweep_stability.py  trunk-stability weight calibration (healthy twin only)
+sim/atlas.py        weakness-dial levels + atlas groups (same settings as the twins)
 sim/export_web.py   run -> web/public/data/*.bin + *.json (seamless loop, interpolated)
-blender/            Cycles film (build_twins.py, render_anim.py, encode_v2.py), bones.glb bake
+sim/export_atlas.py dial + atlas runs -> viewer clips, fingerprints in manifest.json
+blender/            Cycles film (render_film.ps1 runs build_twins.py, render_anim.py, encode_v2.py), bones.glb bake
 web/                Vite + three.js viewer
 ```
 

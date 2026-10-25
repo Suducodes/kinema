@@ -65,11 +65,17 @@ def set_bounds(problem, b, model):
     problem.setStateInfo('/jointset/lumbar/lumbar/value', [deg(x) for x in b['lumbar']])
 
 
-def weakened(model_path, pf, out_path):
-    """Copy of the model with soleus + gastroc max isometric force scaled by pf (both legs)."""
+GROUPS = {  # muscle groups for the atlas (both legs are weakened)
+    'plantarflexors': ('soleus', 'gastroc'), 'vasti': ('vasti',), 'glut_max': ('glut_max',),
+    'hamstrings': ('hamstrings', 'bifemsh'), 'hip_flexors': ('iliopsoas', 'rect_fem'), 'tib_ant': ('tib_ant',),
+}
+
+
+def weakened(model_path, pf, out_path, group='plantarflexors'):
+    """Copy of the model with the group's max isometric force scaled by pf (both legs)."""
     m = osim.Model(str(model_path))
     m.initSystem()
-    for n in ('soleus_r', 'soleus_l', 'gastroc_r', 'gastroc_l'):
+    for n in [f'{g}_{s}' for g in GROUPS[group] for s in ('r', 'l')]:
         mu = m.updMuscles().get(n) if m.getMuscles().getSize() else osim.Muscle.safeDownCast(m.updComponent('/' + n))
         mu.setMaxIsometricForce(mu.getMaxIsometricForce() * pf)
     m.printToXML(str(out_path))
@@ -181,7 +187,7 @@ def run(a):
     run_dir.mkdir(parents=True, exist_ok=True)
     model_path = Path(a.model)
     if a.pf != 1.0:
-        model_path = weakened(model_path, a.pf, run_dir / 'model.osim')
+        model_path = weakened(model_path, a.pf, run_dir / 'model.osim', a.group)
     guess = a.guess if a.guess else tracking_guess(a.model, bounds)
     sol, model = predict(model_path, guess, bounds, a.speed, a.mesh, a.stability)
     sol.write(str(run_dir / 'halfstride.sto'))
@@ -195,7 +201,8 @@ def run(a):
     tx = sol.getStateMat('/jointset/groundPelvis/pelvis_tx/value')
     T = sol.getFinalTime() - sol.getInitialTime()
     meta = {
-        'tag': a.tag, 'model': str(a.model), 'plantarflexor_strength': a.pf, 'speed_mode': a.speed,
+        'tag': a.tag, 'model': str(a.model), 'plantarflexor_strength': a.pf if a.group == 'plantarflexors' else 1.0,
+        'weakened_group': a.group, 'strength': a.pf,'speed_mode': a.speed,
         'mesh_intervals': a.mesh, 'bounds': a.bounds, 'stability_weight': a.stability, 'guess': str(a.guess or 'tracking'),
         'converged': bool(sol.success()), 'status': sol.getStatus(), 'iterations': sol.getNumIterations(),
         'objective': sol.getObjective(), 'speed_mps': float((tx[-1] - tx[0]) / T), 'half_stride_s': T,
@@ -209,7 +216,8 @@ def run(a):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--model', default=str(HERE / 'models' / '2D_gait_fixed.osim'))
-    ap.add_argument('--pf', type=float, default=1.0)
+    ap.add_argument('--pf', type=float, default=1.0, help='strength factor for --group')
+    ap.add_argument('--group', choices=list(GROUPS), default='plantarflexors')
     ap.add_argument('--speed', default='1.2', help="m/s, or 'free'")
     ap.add_argument('--mesh', type=int, default=50)
     ap.add_argument('--bounds', choices=['wide', 'pelvis', 'original'], default='wide')

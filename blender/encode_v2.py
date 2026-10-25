@@ -11,12 +11,16 @@ from pathlib import Path
 import bpy
 
 KIN = Path(r'C:\Users\Sudarshan\claude_code\kinema')
-R = KIN / 'blender' / 'renders' / 'v2'
-SLOWMO = {'healthy': (25, 91), 'weak': (14, 80)}  # Blender frames rendered for each ankle shot
-TOE_OFF_INDEX = 42  # both slow-mo shots are cut so right toe-off lands on this output frame
+VER = 'v3'
+R = KIN / 'blender' / 'renders' / VER
+# Blender frames rendered for each ankle shot, read from the ankle cameras by render_film.ps1
+SHOTS = json.loads((R / 'shots.json').read_text())
+SLOWMO = {'healthy': tuple(SHOTS['Healthy']['slowmo_frames']), 'weak': tuple(SHOTS['WeakCalves']['slowmo_frames'])}
+# both slow-mo shots are cut so right toe-off lands on this output frame
+TOE_OFF_INDEX = SHOTS['Healthy']['toe_off_frame'] - SHOTS['Healthy']['slowmo_frames'][0]
 WIDE_STEP = 4
-TWINS = {'healthy': ('pf_1.00', 'HEALTHY', 'calf strength 100%', 0.235),
-         'weak': ('pf_0.40', 'WEAK CALVES', 'calf strength 40%', 0.735)}
+TWINS = {'healthy': ('sb_h_fix', 'HEALTHY', 'calf strength 100%', 0.235),
+         'weak': ('sb_w_fix', 'WEAK CALVES', 'calf strength 40%', 0.735)}
 
 FONT_TITLE = bpy.data.fonts.load(r'C:\Windows\Fonts\bahnschrift.ttf')
 FONT_DATA = bpy.data.fonts.load(r'C:\Windows\Fonts\consola.ttf')
@@ -142,5 +146,5 @@ def encode(path, film):
     print('encoded', n, 'frames ->', path)
 
 
-encode(KIN / 'blender' / 'renders' / 'twin_walkers_loop_v2.mp4', film=False)
-encode(KIN / 'blender' / 'renders' / 'twin_walkers_v2.mp4', film=True)
+encode(KIN / 'blender' / 'renders' / f'twin_walkers_loop_{VER}.mp4', film=False)
+encode(KIN / 'blender' / 'renders' / f'twin_walkers_{VER}.mp4', film=True)

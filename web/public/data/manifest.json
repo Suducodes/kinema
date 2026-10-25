@@ -1,89 +1,168 @@
-{
- "healthy": "sb_healthy",
- "weak": "sb_weak",
- "status": "Research-grade runs: corrected gastrocnemius path, wide joint limits with the pelvis held to its physiological range, and a small trunk-stability term in the cost. Both twins pass the robustness checks below.",
- "model": "2D_gait.osim with gastrocnemius condyle-wrap fix (sim/fix_gastroc.py); 9 DOF, 18 muscles, 62 kg",
- "validation": {
-  "hip_angle": {
-   "rmse": 10.572,
-   "r": 0.839,
-   "within_1sd_pct": 34.653,
-   "within_2sd_pct": 76.238
-  },
-  "knee_angle": {
-   "rmse": 14.121,
-   "r": 0.841,
-   "within_1sd_pct": 21.782,
-   "within_2sd_pct": 47.525
-  },
-  "ankle_angle": {
-   "rmse": 3.4,
-   "r": 0.875,
-   "within_1sd_pct": 70.297,
-   "within_2sd_pct": 84.158
-  },
-  "hip_moment": {
-   "rmse": 0.192,
-   "r": 0.966,
-   "within_1sd_pct": 49.505,
-   "within_2sd_pct": 77.228
-  },
-  "knee_moment": {
-   "rmse": 0.152,
-   "r": 0.628,
-   "within_1sd_pct": 39.604,
-   "within_2sd_pct": 75.248
-  },
-  "ankle_moment": {
-   "rmse": 0.297,
-   "r": 0.923,
-   "within_1sd_pct": 22.772,
-   "within_2sd_pct": 44.554
-  }
- },
- "checks": [
-  "Pipeline reproduces the official OpenSim example objective bit-for-bit (0.135069) before any new run is trusted",
-  "Gastrocnemius knee moment arm restored (-2.21 cm at 90° flexion vs -1.61 cm reference; original model -0.14 cm)",
-  "All 6 solves converged (IPOPT, tolerance 1e-4)",
-  "Alternate initial guess and 2x mesh refinement: objective spread 0.1% (healthy), 0.3% (weak); step time unchanged",
-  "Trunk-stability weight (0.003) chosen on the healthy twin only, by validation; the weak twin never influenced it"
- ],
- "runs": {
-  "sb_h_fix": {
-   "objective": 0.15781824988077828,
-   "iterations": 316,
-   "half_stride_s": 0.43096864575469684,
-   "mesh_intervals": 50
-  },
-  "sb_h_fix_g2": {
-   "objective": 0.15779780072444313,
-   "iterations": 331,
-   "half_stride_s": 0.43068474779141697,
-   "mesh_intervals": 50
-  },
-  "sb_h_fix_m100": {
-   "objective": 0.15766058984563086,
-   "iterations": 21,
-   "half_stride_s": 0.4305984641705483,
-   "mesh_intervals": 100
-  },
-  "sb_w_fix": {
-   "objective": 0.496451866432103,
-   "iterations": 417,
-   "half_stride_s": 0.3821085078420774,
-   "mesh_intervals": 50
-  },
-  "sb_w_fix_g2": {
-   "objective": 0.49809010174803825,
-   "iterations": 359,
-   "half_stride_s": 0.38135864642929396,
-   "mesh_intervals": 50
-  },
-  "sb_w_fix_m100": {
-   "objective": 0.4965547846168139,
-   "iterations": 128,
-   "half_stride_s": 0.3823947301524858,
-   "mesh_intervals": 100
-  }
- }
+﻿{
+    "healthy":  "sb_healthy",
+    "weak":  "sb_weak",
+    "status":  "Research-grade runs: corrected gastrocnemius path, wide joint limits with the pelvis held to its physiological range, and a small trunk-stability term in the cost. Both twins pass the robustness checks below.",
+    "model":  "2D_gait.osim with gastrocnemius condyle-wrap fix (sim/fix_gastroc.py); 9 DOF, 18 muscles, 62 kg",
+    "validation":  {
+                       "hip_angle":  {
+                                         "rmse":  10.572,
+                                         "r":  0.839,
+                                         "within_1sd_pct":  34.653,
+                                         "within_2sd_pct":  76.238
+                                     },
+                       "knee_angle":  {
+                                          "rmse":  14.121,
+                                          "r":  0.841,
+                                          "within_1sd_pct":  21.782,
+                                          "within_2sd_pct":  47.525
+                                      },
+                       "ankle_angle":  {
+                                           "rmse":  3.4,
+                                           "r":  0.875,
+                                           "within_1sd_pct":  70.297,
+                                           "within_2sd_pct":  84.158
+                                       },
+                       "hip_moment":  {
+                                          "rmse":  0.192,
+                                          "r":  0.966,
+                                          "within_1sd_pct":  49.505,
+                                          "within_2sd_pct":  77.228
+                                      },
+                       "knee_moment":  {
+                                           "rmse":  0.152,
+                                           "r":  0.628,
+                                           "within_1sd_pct":  39.604,
+                                           "within_2sd_pct":  75.248
+                                       },
+                       "ankle_moment":  {
+                                            "rmse":  0.297,
+                                            "r":  0.923,
+                                            "within_1sd_pct":  22.772,
+                                            "within_2sd_pct":  44.554
+                                        }
+                   },
+    "checks":  [
+                   "Pipeline reproduces the official OpenSim example objective bit-for-bit (0.135069) before any new run is trusted",
+                   "Gastrocnemius knee moment arm restored (-2.21 cm at 90° flexion vs -1.61 cm reference; original model -0.14 cm)",
+                   "All 6 solves converged (IPOPT, tolerance 1e-4)",
+                   "Alternate initial guess and 2x mesh refinement: objective spread 0.1% (healthy), 0.3% (weak); step time unchanged",
+                   "Trunk-stability weight (0.003) chosen on the healthy twin only, by validation; the weak twin never influenced it"
+               ],
+    "runs":  {
+                 "sb_h_fix":  {
+                                  "objective":  0.15781824988077828,
+                                  "iterations":  316,
+                                  "half_stride_s":  0.43096864575469684,
+                                  "mesh_intervals":  50
+                              },
+                 "sb_h_fix_g2":  {
+                                     "objective":  0.15779780072444313,
+                                     "iterations":  331,
+                                     "half_stride_s":  0.43068474779141697,
+                                     "mesh_intervals":  50
+                                 },
+                 "sb_h_fix_m100":  {
+                                       "objective":  0.15766058984563086,
+                                       "iterations":  21,
+                                       "half_stride_s":  0.4305984641705483,
+                                       "mesh_intervals":  100
+                                   },
+                 "sb_w_fix":  {
+                                  "objective":  0.496451866432103,
+                                  "iterations":  417,
+                                  "half_stride_s":  0.3821085078420774,
+                                  "mesh_intervals":  50
+                              },
+                 "sb_w_fix_g2":  {
+                                     "objective":  0.49809010174803825,
+                                     "iterations":  359,
+                                     "half_stride_s":  0.38135864642929396,
+                                     "mesh_intervals":  50
+                                 },
+                 "sb_w_fix_m100":  {
+                                       "objective":  0.4965547846168139,
+                                       "iterations":  128,
+                                       "half_stride_s":  0.3823947301524858,
+                                       "mesh_intervals":  100
+                                   }
+             },
+    "dial":  [
+                 {
+                     "s":  1.0,
+                     "clip":  "sb_healthy",
+                     "run":  "sb_h_fix",
+                     "effort_ratio":  1.0,
+                     "step_s":  0.43096864575469684
+                 },
+                 {
+                     "s":  0.4,
+                     "clip":  "sb_weak",
+                     "run":  "sb_w_fix",
+                     "effort_ratio":  3.154,
+                     "step_s":  0.3821085078420774
+                 }
+             ],
+    "atlas":  [
+                  {
+                      "id":  "plantarflexors",
+                      "label":  "Calves",
+                      "muscles":  "soleus + gastrocnemius",
+                      "phrase":  "calf muscles",
+                      "clip":  "sb_weak",
+                      "run":  "sb_w_fix",
+                      "strength":  0.4,
+                      "weakened":  [
+                                       "soleus_r",
+                                       "gastroc_r"
+                                   ],
+                      "converged":  true,
+                      "robust":  true,
+                      "effort_ratio":  3.154,
+                      "step_s":  0.3821085078420774,
+                      "fingerprint":  {
+                                          "glut_max_r":  2.893,
+                                          "iliopsoas_r":  1.708,
+                                          "rect_fem_r":  1.6,
+                                          "hamstrings_r":  1.599,
+                                          "bifemsh_r":  1.325,
+                                          "vasti_r":  4.97,
+                                          "gastroc_r":  0.842,
+                                          "soleus_r":  0.832,
+                                          "tib_ant_r":  1.35
+                                      }
+                  },
+                  {
+                      "id":  "vasti",
+                      "label":  "Quadriceps",
+                      "muscles":  "vasti",
+                      "phrase":  "quadriceps (vasti)",
+                      "clip":  "atlas_vasti",
+                      "run":  "at_vasti_0.40",
+                      "strength":  0.4,
+                      "weakened":  [
+                                       "vasti_r"
+                                   ],
+                      "converged":  true,
+                      "robust":  false,
+                      "effort_ratio":  0.965,
+                      "step_s":  0.44251586874064186,
+                      "fingerprint":  {
+                                          "glut_max_r":  1.109,
+                                          "iliopsoas_r":  0.924,
+                                          "rect_fem_r":  1.057,
+                                          "hamstrings_r":  0.888,
+                                          "bifemsh_r":  0.825,
+                                          "vasti_r":  1.158,
+                                          "gastroc_r":  0.928,
+                                          "soleus_r":  1.008,
+                                          "tib_ant_r":  0.925
+                                      }
+                  }
+              ],
+    "stats":  {
+                  "solves":  32,
+                  "converged":  30,
+                  "cpu_hours":  17.8
+              },
+    "notice":  "Work in progress: the atlas and dial runs are still solving. A multi-start check found a healthy gait about 3% cheaper than the one shown, so the effort ratios here are being re-computed against it."
 }

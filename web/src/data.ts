@@ -41,6 +41,16 @@ export class Clip {
     return { f0, f1, w: x - f0 };
   }
 
+  /** Fractional frame at gait phase p (0-1, from right heel strike); every stride in a clip is identical. */
+  frameAtPhase(p: number) {
+    const n = this.h.frames;
+    const x = this.h.events.heel_strike_r[0] + p * (n / this.h.loop.strides);
+    return ((x % n) + n) % n;
+  }
+
+  /** Played length of one stride (s), after the loop's whole-stride time scaling. */
+  get strideSeconds() { return this.h.loop.seconds / this.h.loop.strides; }
+
   muscleIndex(name: string) { return this.h.muscles.findIndex((m) => m.name === name); }
 }
 

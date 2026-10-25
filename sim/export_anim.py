@@ -17,8 +17,10 @@ import numpy as np
 import opensim as osim
 
 ROOT = Path(__file__).resolve().parents[1]
-MODELS = {'pf_1.00': 'control_official/2D_gait.osim',
-          'pf_0.40': 'official_pf040/2D_gait_pf040.osim'}
+MODELS = {'pf_1.00': 'sim/control_official/2D_gait.osim',  # relative to the repo root
+          'pf_0.40': 'sim/official_pf040/2D_gait_pf040.osim',
+          'sb_h_fix': 'sim/models/2D_gait_fixed.osim',
+          'sb_w_fix': 'data/runs/sb_w_fix/model.osim'}
 N_PATH = 14
 BW = 62.0 * 9.80665
 
@@ -45,7 +47,7 @@ def resample(points, n):
 
 
 def export(tag, fps, seconds):
-    model = osim.Model(str(ROOT / 'sim' / MODELS[tag]))
+    model = osim.Model(str(ROOT / MODELS[tag]))
     state = model.initSystem()
     table = osim.TimeSeriesTable(str(ROOT / 'data' / 'runs' / tag / 'stride.sto'))
     times = np.array(table.getIndependentColumn())

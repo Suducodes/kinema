@@ -14,7 +14,7 @@ from mathutils import Matrix, Vector, Quaternion
 
 ROOT = Path(r'C:\Users\Sudarshan\claude_code\kinema')
 BONES = ROOT / 'blender' / 'bones'
-TWINS = [('pf_1.00', 'Healthy', -1.05), ('pf_0.40', 'WeakCalves', 1.05)]  # (tag, label, x offset)
+TWINS = [('sb_h_fix', 'Healthy', -1.05), ('sb_w_fix', 'WeakCalves', 1.05)]  # (tag, label, x offset)
 FPS = 120  # overwritten from the exported JSON
 RIB_PITCH = 0.008  # m; 1.2 m/s * 8 s / 0.008 = 1200 ribs per loop, so the belt loops seamlessly
 
