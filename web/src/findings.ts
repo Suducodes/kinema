@@ -11,6 +11,7 @@ interface Manifest {
 
 const pct = (s: number) => `${Math.round(s * 100)}%`;
 const x = (r: number) => `×${r.toFixed(r >= 10 ? 0 : 1)}`;
+const xe = (r: number) => `×${r.toFixed(2)}`;   // effort ratios: two decimals, so values just below 1 stay visible
 
 function topCompensators(e: AtlasEntry, n = 3) {
   return MUSCLE_ORDER.filter((m) => !e.weakened.includes(m))
@@ -62,7 +63,8 @@ export function findingsHtml(m: Manifest) {
     "price of being alive". Diagnosed and set aside until a metabolic-energy cost is added.</li>
     <li><b>Calibrated a soft-landing (trunk-stability) term</b> on the healthy walker only, over four weights, against 23 real walkers.
     The weak walkers never influenced the choice.</li>
-    <li><b>Robustness:</b> each twin was re-solved from a different starting guess and on a 2× finer time grid; answers agree within 0.3&nbsp;%.</li>
+    <li><b>Robustness:</b> each twin was re-solved from a different starting guess and on a 2× finer time grid; answers agree within 0.3&nbsp;%.
+    The healthy walk was solved from three different starts and always reached the same optimum.</li>
     <li><b>Validated</b> the healthy walker against Fukuchi et al. 2018 (23 adults, treadmill ~1.2&nbsp;m/s)${v ? `: joint-angle error hip
     ${v.hip_angle.rmse.toFixed(1)}°, knee ${v.knee_angle.rmse.toFixed(1)}°, ankle ${v.ankle_angle.rmse.toFixed(1)}°; hip torque pattern
     r&nbsp;=&nbsp;${v.hip_moment.r.toFixed(2)}, ankle r&nbsp;=&nbsp;${v.ankle_moment.r.toFixed(2)}` : ''}.</li>
@@ -75,17 +77,22 @@ export function findingsHtml(m: Manifest) {
   <h3>What the simulations found</h3>
   ${calves ? `<div class="finding">
     <b>Weak calves (40&nbsp;%) move the work up the leg.</b>
-    <p>Walking costs <b>${x(calves.effort_ratio)}</b> the muscle effort of the healthy twin. The biggest take-over:
+    <p>Walking costs <b>${xe(calves.effort_ratio)}</b> the muscle effort of the healthy twin. The biggest take-over:
     ${topCompensators(calves).map(([mm, r]) => `<em>${SHORT[mm]} ${x(r)}</em>`).join(', ')}. Push-off disappears (the ankle never
     points the toes down), and the walker switches to quicker, shorter steps (${calves.step_s.toFixed(2)}&nbsp;s per step).
     This matches what clinical gait studies report for calf weakness: the knee and hip extensors compensate.</p></div>` : ''}
   ${dial.length > 2 ? `<div class="finding"><b>The cost of weakness is not linear.</b>
     <p>Effort against calf strength (each bar a separate simulation):</p>
-    <div class="ebars">${dial.map((d) => `<div><span>${pct(d.s)}</span><i style="width:${(d.effort_ratio! / maxE) * 100}%"></i><b>${x(d.effort_ratio!)}</b></div>`).join('')}</div></div>` : ''}
+    <div class="ebars">${dial.map((d) => `<div><span>${pct(d.s)}</span><i style="width:${(d.effort_ratio! / maxE) * 100}%"></i><b>${xe(d.effort_ratio!)}</b></div>`).join('')}</div>
+    <p>Each step of weakness costs more than the last, and the walker keeps its normal cadence down to about 60&nbsp;% strength,
+    then switches to quicker, shorter steps.</p></div>` : ''}
   ${others.length ? `<div class="finding"><b>Every weakness has its own fingerprint.</b><ul>${others.map((e) => {
       const top = topCompensators(e, 2);
-      return `<li><b>${e.label} 40&nbsp;%</b>: effort ${x(e.effort_ratio)}; most extra work in ${top.map(([mm, r]) => `${SHORT[mm]} (${x(r)})`).join(' and ')}.</li>`;
-    }).join('')}</ul><p>Open <b>Atlas</b> to watch each one walk.</p></div>` : ''}
+      return `<li><b>${e.label} 40&nbsp;%</b>: effort ${xe(e.effort_ratio)}; most extra work in ${top.map(([mm, r]) => `${SHORT[mm]} (${x(r)})`).join(' and ')}.</li>`;
+    }).join('')}</ul><p>Two cards cost slightly <i>less</i> than healthy (below ×1). That is model physics, not a solver
+    slip: in OpenSim's muscle model a muscle's passive stiffness scales with its strength, so a weaker quadriceps or
+    gluteus also resists the swinging leg less. The healthy walk was re-solved from three different starts (including
+    the cheaper gait) and always returned to the same optimum. Open <b>Atlas</b> to watch each one walk.</p></div>` : ''}
 
   <h3>What it does not show yet</h3>
   <p>2D (no side-to-side compensation), effort-minimising walkers at a fixed speed, weakness as lost force only. Each limit,
