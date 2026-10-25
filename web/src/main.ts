@@ -214,7 +214,9 @@ async function main() {
   applyLayout();
   stage.camera.position.copy(cam.to); stage.controls.target.copy(cam.tTo); cam.k = 1;
   stage.settle();
-  $('loading').classList.add('gone');
+  const veil = $('loading');
+  veil.classList.add('gone');
+  setTimeout(() => veil.remove(), 900);   // transitions can stall in background tabs
 }
 
 function segment(id: string, onPick: (b: HTMLButtonElement) => void) {

@@ -106,10 +106,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .method a { color: var(--healthy); }
 
 @media (max-width: 900px) {
-  .mast { top: 14px; left: 16px; max-width: 70vw; } .mast h1 { font-size: 28px; } .mast p { display: none; }
-  .shots { top: auto; bottom: 214px; right: 12px; left: 12px; max-width: none; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
+  .mast { top: 14px; left: 16px; right: 16px; max-width: none; }
+  .mast h1 { font-size: 28px; margin: 6px 0 0; } .mast p { display: none; }
+  .extras { left: auto; right: 16px; top: 16px; bottom: auto; }
+  .extras button { padding: 5px 11px; font-size: 12px; }
+  /* camera controls: one scrollable row under the title, never over the dock */
+  .shots { top: 92px; left: 12px; right: 12px; max-width: none; justify-content: flex-start; flex-wrap: nowrap;
+    overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .shots::-webkit-scrollbar { display: none; }
+  .shots .seg { flex: none; }
   .readout { display: none; }
-  .dock { left: 12px; right: 12px; bottom: 10px; }
+  .dock { left: 10px; right: 10px; bottom: 10px; gap: 8px; }
+  .transport { gap: 6px; padding: 5px 8px; }
+  #back, #fwd { display: none; }
+  .transport .seg button { padding: 6px 9px; }
+  .timeline { min-width: 80px; }
+  .clock { min-width: 48px; font-size: 11px; }
   .charts { grid-template-columns: 1fr; } .chart:nth-child(n+2) { display: none; }
-  .extras { left: 16px; bottom: auto; top: 80px; }
+  .chart canvas { height: 78px; }
 }
+@media (max-width: 420px) { .extras { top: 52px; } .mast h1 { font-size: 24px; } .shots { top: 96px; } }
