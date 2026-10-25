@@ -1,0 +1,311 @@
+{
+ "name": "atlas_vasti",
+ "run": "at_vasti_0.40",
+ "fps": 60,
+ "frames": 480,
+ "stride": 934,
+ "meshes": [
+  {
+   "name": "pelvis_geom_1",
+   "file": "r_pelvis",
+   "scale": [
+    0.96574,
+    0.96574,
+    0.985996
+   ]
+  },
+  {
+   "name": "pelvis_geom_2",
+   "file": "l_pelvis",
+   "scale": [
+    0.96574,
+    0.96574,
+    0.985996
+   ]
+  },
+  {
+   "name": "pelvis_geom_3",
+   "file": "sacrum",
+   "scale": [
+    0.96574,
+    0.96574,
+    0.985996
+   ]
+  },
+  {
+   "name": "femur_l_geom_1",
+   "file": "femur_l",
+   "scale": [
+    1.00275,
+    1.00275,
+    1.00275
+   ]
+  },
+  {
+   "name": "femur_r_geom_1",
+   "file": "femur_r",
+   "scale": [
+    1.00275,
+    1.00275,
+    1.00275
+   ]
+  },
+  {
+   "name": "tibia_l_geom_1",
+   "file": "tibia_l",
+   "scale": [
+    0.966732,
+    0.966732,
+    0.966732
+   ]
+  },
+  {
+   "name": "fibula_l_geom_1",
+   "file": "l_fibula",
+   "scale": [
+    0.966732,
+    0.966732,
+    0.966732
+   ]
+  },
+  {
+   "name": "tibia_r_geom_1",
+   "file": "tibia_r",
+   "scale": [
+    0.966732,
+    0.966732,
+    0.966732
+   ]
+  },
+  {
+   "name": "fibula_r_geom_1",
+   "file": "r_fibula",
+   "scale": [
+    0.966732,
+    0.966732,
+    0.966732
+   ]
+  },
+  {
+   "name": "talus_l_geom_1",
+   "file": "l_talus",
+   "scale": [
+    0.913924,
+    0.913924,
+    0.913924
+   ]
+  },
+  {
+   "name": "talus_r_geom_1",
+   "file": "r_talus",
+   "scale": [
+    0.913924,
+    0.913924,
+    0.913924
+   ]
+  },
+  {
+   "name": "calc_l_geom_1",
+   "file": "l_foot",
+   "scale": [
+    0.913924,
+    0.913924,
+    0.913924
+   ]
+  },
+  {
+   "name": "calc_r_geom_1",
+   "file": "r_foot",
+   "scale": [
+    0.913924,
+    0.913924,
+    0.913924
+   ]
+  },
+  {
+   "name": "toes_l_geom_1",
+   "file": "l_bofoot",
+   "scale": [
+    0.913924,
+    0.913924,
+    0.913924
+   ]
+  },
+  {
+   "name": "toes_r_geom_1",
+   "file": "r_bofoot",
+   "scale": [
+    0.913924,
+    0.913924,
+    0.913924
+   ]
+  },
+  {
+   "name": "torso_geom_1",
+   "file": "hat_spine",
+   "scale": [
+    0.96574,
+    0.96574,
+    0.985996
+   ]
+  },
+  {
+   "name": "torso_geom_2",
+   "file": "hat_jaw",
+   "scale": [
+    0.96574,
+    0.96574,
+    0.985996
+   ]
+  },
+  {
+   "name": "torso_geom_3",
+   "file": "hat_skull",
+   "scale": [
+    0.96574,
+    0.96574,
+    0.985996
+   ]
+  },
+  {
+   "name": "torso_geom_4",
+   "file": "hat_ribs_scap",
+   "scale": [
+    0.96574,
+    0.96574,
+    0.985996
+   ]
+  }
+ ],
+ "muscles": [
+  {
+   "name": "hamstrings_r",
+   "fmax": 2700.0
+  },
+  {
+   "name": "bifemsh_r",
+   "fmax": 804.0
+  },
+  {
+   "name": "glut_max_r",
+   "fmax": 1944.0
+  },
+  {
+   "name": "iliopsoas_r",
+   "fmax": 2342.0
+  },
+  {
+   "name": "rect_fem_r",
+   "fmax": 1169.0
+  },
+  {
+   "name": "vasti_r",
+   "fmax": 2000.0
+  },
+  {
+   "name": "gastroc_r",
+   "fmax": 2500.0
+  },
+  {
+   "name": "soleus_r",
+   "fmax": 5137.0
+  },
+  {
+   "name": "tib_ant_r",
+   "fmax": 3000.0
+  },
+  {
+   "name": "hamstrings_l",
+   "fmax": 2700.0
+  },
+  {
+   "name": "bifemsh_l",
+   "fmax": 804.0
+  },
+  {
+   "name": "glut_max_l",
+   "fmax": 1944.0
+  },
+  {
+   "name": "iliopsoas_l",
+   "fmax": 2342.0
+  },
+  {
+   "name": "rect_fem_l",
+   "fmax": 1169.0
+  },
+  {
+   "name": "vasti_l",
+   "fmax": 2000.0
+  },
+  {
+   "name": "gastroc_l",
+   "fmax": 2500.0
+  },
+  {
+   "name": "soleus_l",
+   "fmax": 5137.0
+  },
+  {
+   "name": "tib_ant_l",
+   "fmax": 3000.0
+  }
+ ],
+ "nPath": 14,
+ "events": {
+  "heel_strike_r": [
+   52,
+   105,
+   158,
+   212,
+   265,
+   318,
+   372,
+   425,
+   478
+  ],
+  "toe_off_r": [
+   30,
+   83,
+   137,
+   190,
+   243,
+   297,
+   350,
+   403,
+   457
+  ]
+ },
+ "mass": 62.00000000000004,
+ "loop": {
+  "seconds": 8,
+  "strides": 9,
+  "timeScale": 0.9956607046664442,
+  "strideS": 0.8850317374812837
+ },
+ "speed": 1.200000000000012,
+ "meta": {
+  "tag": "at_vasti_0.40",
+  "model": "C:\\Users\\Sudarshan\\claude_code\\kinema\\sim\\models\\2D_gait_fixed.osim",
+  "plantarflexor_strength": 1.0,
+  "weakened_group": "vasti",
+  "strength": 0.4,
+  "speed_mode": "1.2",
+  "mesh_intervals": 50,
+  "bounds": "pelvis",
+  "stability_weight": 0.003,
+  "guess": "C:\\Users\\Sudarshan\\claude_code\\kinema\\data\\runs\\sb_h_fix\\halfstride.sto",
+  "converged": true,
+  "status": "Solve_Succeeded",
+  "iterations": 81,
+  "objective": 0.15327255409311344,
+  "speed_mps": 1.2000000000000115,
+  "half_stride_s": 0.44251586874064186,
+  "bound_hits": [
+   "pelvis_tilt [-20.0,-10.0]",
+   "knee_angle_r [-19.2,-0.0]"
+  ],
+  "wall_time_s": 1160.1,
+  "opensim": "4.6-2026-03-31-d6972f9e6"
+ }
+}
