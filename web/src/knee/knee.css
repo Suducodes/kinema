@@ -1,0 +1,54 @@
+/* Inside the Knee: builds on app.css (same tokens, glass cards, controls) */
+.knee-page .mast { max-width: 470px; }
+
+.knee-page .readout { width: 318px; }
+.test-card { padding: 2px 0 10px; border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+.test-card span { font: 500 10px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+.test-card span b { color: var(--weak); font-weight: 500; }
+.test-card p { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.test-card p.rest { color: var(--text); font-size: 12px; border-left: 2px solid var(--weak); padding-left: 8px; }
+.knee-page .readout .row span small { display: block; margin: 1px 0 0; font: 400 10px/1 var(--mono); color: var(--faint); }
+.knee-page .readout .phase b.load { grid-column: 2 / 4; text-align: right; color: #9fe2ff; }
+
+.legend { position: fixed; left: 26px; top: 168px; width: 300px; z-index: 5; padding: 10px 12px 8px; border: 1px solid var(--rule); border-radius: 12px;
+  background: var(--glass); backdrop-filter: blur(14px); }
+.legend header { display: flex; justify-content: space-between; font: 500 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); padding-bottom: 6px; }
+.legend header em { font-style: normal; letter-spacing: .02em; text-transform: none; }
+.lrow { display: grid; grid-template-columns: 1fr auto auto 40px 40px; gap: 6px; align-items: center; padding: 3px 4px; border-top: 1px solid var(--rule); border-radius: 6px; cursor: default; }
+.lrow.on { background: rgba(255,255,255,.05); }
+.lrow .nm b { display: block; font: 500 12.5px/1.2 var(--sans); }
+.lrow .nm small { font-size: 10.5px; color: var(--faint); }
+.lrow .st { font: 500 9px/1.7 var(--mono); letter-spacing: .06em; text-transform: uppercase; font-style: normal; border-radius: 999px; padding: 0 6px; }
+.lrow .st.ok, .lrow .st.intact { color: var(--healthy); border: 1px solid rgba(159,195,212,.3); }
+.lrow .st.torn { color: #fff; background: rgba(176,46,32,.85); }
+.lrow .st.stretched { color: #f0b48f; border: 1px solid rgba(224,122,95,.55); }
+.lrow .fh, .lrow .fi { font: 500 11px/1 var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.lrow .fh { color: var(--healthy); } .lrow .fi { color: var(--weak); }
+.legend footer { display: flex; align-items: center; gap: 6px; padding-top: 7px; font-size: 10.5px; color: var(--faint); }
+.legend .ramp { width: 64px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, rgb(77,92,107), rgb(245,219,148), rgb(250,133,41), rgb(219,31,18)); }
+.legend i.stub { display: inline-block; width: 14px; height: 4px; border-radius: 2px; background: rgb(158,41,31); }
+
+.timeline .phases i { position: absolute; top: 0; bottom: 0; font: 500 9px/28px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--faint);
+  text-align: center; border-left: 1px solid var(--rule); font-style: normal; overflow: hidden; white-space: nowrap; }
+.knee-page .charts, .knee-page .chart.wide { display: block; }
+.chart.wide canvas { height: 104px; }
+.chart.wide header em { display: flex; align-items: center; gap: 6px; }
+.chart.wide i.kh, .chart.wide i.ki { display: inline-block; width: 14px; height: 2px; }
+.chart.wide i.kh { background: var(--healthy); } .chart.wide i.ki { background: var(--weak); }
+.knee-page .extras { bottom: calc(16px + 44px + 10px + 140px); }
+
+@media (max-width: 1180px) {
+  .legend { top: auto; bottom: calc(16px + 44px + 10px + 140px + 46px); width: 300px; }
+  .legend .nm small { display: none; }
+}
+@media (max-width: 900px) {
+  .knee-page .readout { display: block; top: auto; bottom: calc(10px + 40px + 8px + 140px); left: 10px; right: 10px; width: auto; padding: 6px 12px; }
+  .knee-page .readout .test-card, .knee-page .readout .phase { display: none; }
+  .knee-page .readout .cols b { padding-bottom: 4px; }
+  .knee-page .readout .row { padding: 3px 0; }
+  .knee-page .readout .row span small { display: none; }
+  .knee-page .readout .row:nth-child(2), .knee-page .readout .row:nth-child(4), .knee-page .readout .row:nth-child(5) { display: none; }
+  .legend { display: none; }
+  .knee-page .extras { top: 136px; bottom: auto; }
+  .chart.wide canvas { height: 90px; }
+}

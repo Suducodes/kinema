@@ -30,3 +30,8 @@ blender/*.blend
 
 # Moco stop-file byproducts
 sim/delete_this_to_stop_optimization_*.txt
+
+# third-party knee model checkout (Apache-2.0, re-fetchable)
+knee/vendor/
+knee/runs/*/results/
+knee/runs/run_tests.log

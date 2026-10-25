@@ -17,7 +17,7 @@ const HEMI = { color: 0xa9bcc8, intensity: 0.30 };
 export const TREADMILL = { length: 1.7, width: 0.62, deck: 0.11 };
 const MAX_FEET = 8;
 
-function softboxEnvironment(renderer: THREE.WebGLRenderer) {
+export function softboxEnvironment(renderer: THREE.WebGLRenderer) {
   const scene = new THREE.Scene();
   scene.add(new THREE.Mesh(new THREE.SphereGeometry(30, 32, 16), new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -50,7 +50,7 @@ function softboxEnvironment(renderer: THREE.WebGLRenderer) {
   return tex;
 }
 
-function sky() {
+export function sky() {
   return new THREE.Mesh(new THREE.SphereGeometry(90, 48, 24), new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',

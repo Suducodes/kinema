@@ -5,5 +5,8 @@ export default defineConfig({
   base: './',
   server: { port: 5193 },
   preview: { port: 5194 },
-  build: { target: 'es2022', chunkSizeWarningLimit: 900 },
+  build: {
+    target: 'es2022', chunkSizeWarningLimit: 900,
+    rollupOptions: { input: { main: 'index.html', knee: 'knee.html' } },
+  },
 });
