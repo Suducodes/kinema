@@ -1,6 +1,89 @@
 {
-    "healthy":  "dev_healthy",
-    "weak":  "dev_weak",
-    "status":  "Development data: proof-of-concept runs on the original 2D model (gastrocnemius path bug, solver limits touched). Research-grade runs are being computed.",
-    "model":  "2D_gait.osim (original, POC)"
+ "healthy": "sb_healthy",
+ "weak": "sb_weak",
+ "status": "Research-grade runs: corrected gastrocnemius path, wide joint limits with the pelvis held to its physiological range, and a small trunk-stability term in the cost. Both twins pass the robustness checks below.",
+ "model": "2D_gait.osim with gastrocnemius condyle-wrap fix (sim/fix_gastroc.py); 9 DOF, 18 muscles, 62 kg",
+ "validation": {
+  "hip_angle": {
+   "rmse": 10.572,
+   "r": 0.839,
+   "within_1sd_pct": 34.653,
+   "within_2sd_pct": 76.238
+  },
+  "knee_angle": {
+   "rmse": 14.121,
+   "r": 0.841,
+   "within_1sd_pct": 21.782,
+   "within_2sd_pct": 47.525
+  },
+  "ankle_angle": {
+   "rmse": 3.4,
+   "r": 0.875,
+   "within_1sd_pct": 70.297,
+   "within_2sd_pct": 84.158
+  },
+  "hip_moment": {
+   "rmse": 0.192,
+   "r": 0.966,
+   "within_1sd_pct": 49.505,
+   "within_2sd_pct": 77.228
+  },
+  "knee_moment": {
+   "rmse": 0.152,
+   "r": 0.628,
+   "within_1sd_pct": 39.604,
+   "within_2sd_pct": 75.248
+  },
+  "ankle_moment": {
+   "rmse": 0.297,
+   "r": 0.923,
+   "within_1sd_pct": 22.772,
+   "within_2sd_pct": 44.554
+  }
+ },
+ "checks": [
+  "Pipeline reproduces the official OpenSim example objective bit-for-bit (0.135069) before any new run is trusted",
+  "Gastrocnemius knee moment arm restored (-2.21 cm at 90° flexion vs -1.61 cm reference; original model -0.14 cm)",
+  "All 6 solves converged (IPOPT, tolerance 1e-4)",
+  "Alternate initial guess and 2x mesh refinement: objective spread 0.1% (healthy), 0.3% (weak); step time unchanged",
+  "Trunk-stability weight (0.003) chosen on the healthy twin only, by validation; the weak twin never influenced it"
+ ],
+ "runs": {
+  "sb_h_fix": {
+   "objective": 0.15781824988077828,
+   "iterations": 316,
+   "half_stride_s": 0.43096864575469684,
+   "mesh_intervals": 50
+  },
+  "sb_h_fix_g2": {
+   "objective": 0.15779780072444313,
+   "iterations": 331,
+   "half_stride_s": 0.43068474779141697,
+   "mesh_intervals": 50
+  },
+  "sb_h_fix_m100": {
+   "objective": 0.15766058984563086,
+   "iterations": 21,
+   "half_stride_s": 0.4305984641705483,
+   "mesh_intervals": 100
+  },
+  "sb_w_fix": {
+   "objective": 0.496451866432103,
+   "iterations": 417,
+   "half_stride_s": 0.3821085078420774,
+   "mesh_intervals": 50
+  },
+  "sb_w_fix_g2": {
+   "objective": 0.49809010174803825,
+   "iterations": 359,
+   "half_stride_s": 0.38135864642929396,
+   "mesh_intervals": 50
+  },
+  "sb_w_fix_m100": {
+   "objective": 0.4965547846168139,
+   "iterations": 128,
+   "half_stride_s": 0.3823947301524858,
+   "mesh_intervals": 100
+  }
+ }
 }
