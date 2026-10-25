@@ -27,3 +27,6 @@ web/dist/
 blender/*.blend
 
 .pages/
+
+# Moco stop-file byproducts
+sim/delete_this_to_stop_optimization_*.txt

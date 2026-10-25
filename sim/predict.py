@@ -25,6 +25,9 @@ ORIGINAL_BOUNDS = {  # official example (degrees, time in s)
 WIDE_BOUNDS = {  # wide enough that a physiological gait should never touch them
     'pelvis_tilt': (-35, 5), 'hip_flexion': (-30, 80), 'knee_angle': (-90, 0),
     'ankle_angle': (-35, 35), 'lumbar': (-10, 35), 'time': (0.3, 0.9)}
+# Wide joints, but pelvis held to +-5 deg around the reference mean (-15.1 deg); real sagittal pelvis
+# tilt range in gait is ~3-5 deg. Fully free, the 2D model rocks the pelvis ~27 deg per stride.
+PELVIS_BOUNDS = dict(WIDE_BOUNDS, pelvis_tilt=(-20, -10))
 
 
 def add_symmetry(problem, model, actuator_pairs=True):
@@ -108,7 +111,7 @@ def tracking_guess(model_path, bounds):
     return study.solve()
 
 
-def predict(model_path, guess, bounds, speed, mesh):
+def predict(model_path, guess, bounds, speed, mesh, stability=0.0):
     study = osim.MocoStudy()
     study.setName('gaitPrediction')
     problem = study.updProblem()
@@ -125,6 +128,15 @@ def predict(model_path, guess, bounds, speed, mesh):
     problem.addGoal(effort)
     effort.setExponent(3)
     effort.setDivideByDisplacement(True)
+    if stability > 0:
+        # Head/trunk stability ("soft landing"): squared norm of the torso's linear acceleration per
+        # metre walked. People damp trunk/head accelerations, partly by flexing the stance knee at
+        # loading; an effort-only cost has no reason to, so it lands stiff-kneed.
+        stab = osim.MocoOutputGoal('stability', stability)
+        problem.addGoal(stab)
+        stab.setOutputPath('/bodyset/torso|linear_acceleration')
+        stab.setExponent(2)
+        stab.setDivideByDisplacement(True)
     problem.setTimeBounds(0, list(bounds['time']))
     set_bounds(problem, bounds, model)
     solver = study.initCasADiSolver()
@@ -164,14 +176,14 @@ def bound_hits(sol, bounds, tol_deg=0.5):
 
 def run(a):
     t0 = time.time()
-    bounds = WIDE_BOUNDS if a.bounds == 'wide' else ORIGINAL_BOUNDS
+    bounds = {'wide': WIDE_BOUNDS, 'pelvis': PELVIS_BOUNDS, 'original': ORIGINAL_BOUNDS}[a.bounds]
     run_dir = RUNS / a.tag
     run_dir.mkdir(parents=True, exist_ok=True)
     model_path = Path(a.model)
     if a.pf != 1.0:
         model_path = weakened(model_path, a.pf, run_dir / 'model.osim')
     guess = a.guess if a.guess else tracking_guess(a.model, bounds)
-    sol, model = predict(model_path, guess, bounds, a.speed, a.mesh)
+    sol, model = predict(model_path, guess, bounds, a.speed, a.mesh, a.stability)
     sol.write(str(run_dir / 'halfstride.sto'))
     stride = osim.createPeriodicTrajectory(sol)
     stride.write(str(run_dir / 'stride.sto'))
@@ -184,7 +196,7 @@ def run(a):
     T = sol.getFinalTime() - sol.getInitialTime()
     meta = {
         'tag': a.tag, 'model': str(a.model), 'plantarflexor_strength': a.pf, 'speed_mode': a.speed,
-        'mesh_intervals': a.mesh, 'bounds': a.bounds, 'guess': str(a.guess or 'tracking'),
+        'mesh_intervals': a.mesh, 'bounds': a.bounds, 'stability_weight': a.stability, 'guess': str(a.guess or 'tracking'),
         'converged': bool(sol.success()), 'status': sol.getStatus(), 'iterations': sol.getNumIterations(),
         'objective': sol.getObjective(), 'speed_mps': float((tx[-1] - tx[0]) / T), 'half_stride_s': T,
         'bound_hits': bound_hits(sol, bounds), 'wall_time_s': round(time.time() - t0, 1),
@@ -200,7 +212,8 @@ if __name__ == '__main__':
     ap.add_argument('--pf', type=float, default=1.0)
     ap.add_argument('--speed', default='1.2', help="m/s, or 'free'")
     ap.add_argument('--mesh', type=int, default=50)
-    ap.add_argument('--bounds', choices=['wide', 'original'], default='wide')
+    ap.add_argument('--bounds', choices=['wide', 'pelvis', 'original'], default='wide')
+    ap.add_argument('--stability', type=float, default=0.0, help='weight of the torso-acceleration goal')
     ap.add_argument('--guess', default=None, help='path to a .sto guess; default = tracking solve')
     ap.add_argument('--tag', required=True)
     ap.add_argument('--regression', action='store_true', help='original model+bounds; expect objective ~0.135')

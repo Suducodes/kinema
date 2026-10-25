@@ -17,9 +17,13 @@ COND = {'h': 1.0, 'w': 0.4}
 SPEED = {'fix': '1.2', 'free': 'free'}
 
 
+BOUNDS = 'wide'
+STABILITY = 0.0
+
+
 def cmd(tag, pf, speed, mesh, guess=None):
     c = [sys.executable, str(HERE / 'predict.py'), '--tag', tag, '--pf', str(pf), '--speed', speed,
-         '--mesh', str(mesh), '--bounds', 'wide']
+         '--mesh', str(mesh), '--bounds', BOUNDS, '--stability', str(STABILITY)]
     if guess:
         c += ['--guess', str(guess)]
     return tag, c
@@ -52,13 +56,19 @@ def run_stage(jobs, n):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--jobs', type=int, default=4)
+    ap.add_argument('--prefix', default='rg', help='tag prefix, e.g. pv for the pelvis-limited set')
+    ap.add_argument('--bounds', default='wide', choices=['wide', 'pelvis', 'original'])
+    ap.add_argument('--speeds', default='fix,free', help='comma list from: fix, free')
+    ap.add_argument('--stability', type=float, default=0.0, help='torso-acceleration goal weight')
     a = ap.parse_args()
-    A = [cmd(f'rg_{c}_{s}', pf, sp, 50) for c, pf in COND.items() for s, sp in SPEED.items()]
+    BOUNDS, P, STABILITY = a.bounds, a.prefix, a.stability
+    SPEED = {s: SPEED[s] for s in a.speeds.split(',')}
+    A = [cmd(f'{P}_{c}_{s}', pf, sp, 50) for c, pf in COND.items() for s, sp in SPEED.items()]
     run_stage(A, a.jobs)
     other = {'h': 'w', 'w': 'h'}
-    B = [cmd(f'rg_{c}_{s}_g2', pf, sp, 50, RUNS / f'rg_{other[c]}_{s}' / 'halfstride.sto')
+    B = [cmd(f'{P}_{c}_{s}_g2', pf, sp, 50, RUNS / f'{P}_{other[c]}_{s}' / 'halfstride.sto')
          for c, pf in COND.items() for s, sp in SPEED.items()]
-    C = [cmd(f'rg_{c}_{s}_m100', pf, sp, 100, RUNS / f'rg_{c}_{s}' / 'halfstride.sto')
+    C = [cmd(f'{P}_{c}_{s}_m100', pf, sp, 100, RUNS / f'{P}_{c}_{s}' / 'halfstride.sto')
          for c, pf in COND.items() for s, sp in SPEED.items()]
     run_stage(B + C, a.jobs)
     print('BATCH COMPLETE', flush=True)
