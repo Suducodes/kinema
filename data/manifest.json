@@ -95,11 +95,32 @@
                      "step_s":  0.43096864575469684
                  },
                  {
+                     "s":  0.8,
+                     "clip":  "dial_080",
+                     "run":  "at_pf_0.80",
+                     "effort_ratio":  1.498,
+                     "step_s":  0.43092801935576464
+                 },
+                 {
+                     "s":  0.6,
+                     "clip":  "dial_060",
+                     "run":  "at_pf_0.60",
+                     "effort_ratio":  2.15,
+                     "step_s":  0.4202804516362215
+                 },
+                 {
                      "s":  0.4,
                      "clip":  "sb_weak",
                      "run":  "sb_w_fix",
                      "effort_ratio":  3.154,
                      "step_s":  0.3821085078420774
+                 },
+                 {
+                     "s":  0.2,
+                     "clip":  "dial_020",
+                     "run":  "at_pf_0.20",
+                     "effort_ratio":  4.589,
+                     "step_s":  0.35599127964833244
                  }
              ],
     "atlas":  [
@@ -157,12 +178,121 @@
                                           "soleus_r":  1.008,
                                           "tib_ant_r":  0.925
                                       }
+                  },
+                  {
+                      "id":  "glut_max",
+                      "label":  "Gluteus max",
+                      "muscles":  "gluteus maximus",
+                      "phrase":  "gluteus maximus muscles",
+                      "clip":  "atlas_glut_max",
+                      "run":  "at_glut_max_0.40",
+                      "strength":  0.4,
+                      "weakened":  [
+                                       "glut_max_r"
+                                   ],
+                      "converged":  true,
+                      "robust":  false,
+                      "effort_ratio":  0.975,
+                      "step_s":  0.43286293810153725,
+                      "fingerprint":  {
+                                          "glut_max_r":  0.892,
+                                          "iliopsoas_r":  0.888,
+                                          "rect_fem_r":  0.983,
+                                          "hamstrings_r":  1.291,
+                                          "bifemsh_r":  0.983,
+                                          "vasti_r":  1.226,
+                                          "gastroc_r":  0.988,
+                                          "soleus_r":  0.992,
+                                          "tib_ant_r":  0.989
+                                      }
+                  },
+                  {
+                      "id":  "hamstrings",
+                      "label":  "Hamstrings",
+                      "muscles":  "hamstrings + biceps femoris short head",
+                      "phrase":  "hamstrings",
+                      "clip":  "atlas_hamstrings",
+                      "run":  "at_hamstrings_0.40",
+                      "strength":  0.4,
+                      "weakened":  [
+                                       "hamstrings_r",
+                                       "bifemsh_r"
+                                   ],
+                      "converged":  true,
+                      "robust":  false,
+                      "effort_ratio":  1.17,
+                      "step_s":  0.4350204920335057,
+                      "fingerprint":  {
+                                          "glut_max_r":  1.787,
+                                          "iliopsoas_r":  0.821,
+                                          "rect_fem_r":  0.78,
+                                          "hamstrings_r":  1.466,
+                                          "bifemsh_r":  0.795,
+                                          "vasti_r":  0.919,
+                                          "gastroc_r":  1.154,
+                                          "soleus_r":  1.057,
+                                          "tib_ant_r":  1.073
+                                      }
+                  },
+                  {
+                      "id":  "hip_flexors",
+                      "label":  "Hip flexors",
+                      "muscles":  "iliopsoas + rectus femoris",
+                      "phrase":  "hip flexors",
+                      "clip":  "atlas_hip_flexors",
+                      "run":  "at_hip_flexors_0.40",
+                      "strength":  0.4,
+                      "weakened":  [
+                                       "iliopsoas_r",
+                                       "rect_fem_r"
+                                   ],
+                      "converged":  true,
+                      "robust":  false,
+                      "effort_ratio":  1.698,
+                      "step_s":  0.43076995545587937,
+                      "fingerprint":  {
+                                          "glut_max_r":  0.547,
+                                          "iliopsoas_r":  1.442,
+                                          "rect_fem_r":  1.779,
+                                          "hamstrings_r":  0.508,
+                                          "bifemsh_r":  1.268,
+                                          "vasti_r":  0.711,
+                                          "gastroc_r":  1.411,
+                                          "soleus_r":  1.494,
+                                          "tib_ant_r":  0.862
+                                      }
+                  },
+                  {
+                      "id":  "tib_ant",
+                      "label":  "Tibialis anterior",
+                      "muscles":  "tibialis anterior",
+                      "phrase":  "shin muscles (tibialis anterior)",
+                      "clip":  "atlas_tib_ant",
+                      "run":  "at_tib_ant_0.40",
+                      "strength":  0.4,
+                      "weakened":  [
+                                       "tib_ant_r"
+                                   ],
+                      "converged":  true,
+                      "robust":  false,
+                      "effort_ratio":  1.207,
+                      "step_s":  0.4080201291346933,
+                      "fingerprint":  {
+                                          "glut_max_r":  1.349,
+                                          "iliopsoas_r":  1.032,
+                                          "rect_fem_r":  0.933,
+                                          "hamstrings_r":  0.914,
+                                          "bifemsh_r":  1.156,
+                                          "vasti_r":  1.964,
+                                          "gastroc_r":  1.038,
+                                          "soleus_r":  1.164,
+                                          "tib_ant_r":  0.869
+                                      }
                   }
               ],
     "stats":  {
-                  "solves":  32,
-                  "converged":  30,
-                  "cpu_hours":  17.8
-              },
-    "notice":  "Work in progress: the atlas and dial runs are still solving. A multi-start check found a healthy gait about 3% cheaper than the one shown, so the effort ratios here are being re-computed against it."
+                  "solves":  40,
+                  "converged":  38,
+                  "cpu_hours":  22.8
+              }
 }
