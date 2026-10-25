@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Twin Walkers · KINEMA</title>
+  <meta name="description" content="Two OpenSim Moco predictive gait simulations side by side: a healthy walker and one with 60% weaker calf muscles, at the same treadmill speed." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1113'/%3E%3Cpath d='M9 25l4-9 3 4 3-11 4 16' fill='none' stroke='%23e9e4d8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <canvas id="stage"></canvas>
+
+  <div class="loading" id="loading"><span>Loading the gait lab</span><i></i></div>
+
+  <header class="mast">
+    <div class="eyebrow">KINEMA <b>·</b> OpenSim Moco predictive gait</div>
+    <h1>Twin Walkers</h1>
+    <p>Same body, same treadmill, same 1.2&nbsp;m/s. <span class="w">The right twin's calf muscles keep only 40&nbsp;% of their strength</span>, and it has to find another way to walk.</p>
+  </header>
+
+  <nav class="shots" aria-label="Camera">
+    <div class="seg" id="layout">
+      <button data-layout="side" aria-pressed="true">Side by side</button>
+      <button data-layout="overlay">Overlay</button>
+    </div>
+    <div class="seg" id="shots">
+      <button data-shot="body" aria-pressed="true">Body</button>
+      <button data-shot="hip">Hip</button>
+      <button data-shot="knee">Knee</button>
+      <button data-shot="ankle">Ankle</button>
+    </div>
+    <div class="seg" id="focus" title="Which twin the joint shots frame">
+      <button data-focus="h">Healthy</button>
+      <button data-focus="w" aria-pressed="true">Weak</button>
+    </div>
+  </nav>
+
+  <aside class="readout" id="readout" aria-live="off">
+    <div class="cols"><span></span><b class="h">Healthy</b><b class="w">Weak calves</b></div>
+    <div class="rows" id="rows"></div>
+    <div class="phase"><span>Gait phase (right leg)</span><b id="phase-h">-</b><b id="phase-w">-</b></div>
+  </aside>
+
+  <section class="dock">
+    <div class="transport">
+      <button class="icon" id="play" aria-label="Pause">❚❚</button>
+      <button class="icon" id="back" aria-label="Previous frame">‹</button>
+      <button class="icon" id="fwd" aria-label="Next frame">›</button>
+      <div class="seg" id="speed">
+        <button data-speed="1" aria-pressed="true">1×</button>
+        <button data-speed="0.5">½×</button>
+        <button data-speed="0.25">¼×</button>
+      </div>
+      <div class="timeline" id="timeline"><div class="ticks" id="ticks"></div><div class="head" id="head"></div></div>
+      <span class="clock" id="clock">0.00 s</span>
+    </div>
+    <div class="charts" id="charts"></div>
+  </section>
+
+  <nav class="extras">
+    <button id="open-film">Film</button>
+    <button id="open-method">Method &amp; limits</button>
+  </nav>
+
+  <div class="tip" id="tip" hidden></div>
+
+  <dialog id="film" class="sheet film">
+    <video id="film-video" src="media/twin_walkers_v2.mp4" playsinline loop controls preload="none"></video>
+    <form method="dialog"><button>Close</button></form>
+  </dialog>
+
+  <dialog id="method" class="sheet method">
+    <div class="body" id="method-body"></div>
+    <form method="dialog"><button>Close</button></form>
+  </dialog>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

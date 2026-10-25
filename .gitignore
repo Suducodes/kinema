@@ -1,0 +1,27 @@
+# regenerable / large outputs
+blender/renders/
+blender/*.blend1
+blender/bones/
+data/runs/
+data/anim/
+data/*.log
+data/validation/fukuchi2018/trials/
+sim/control_official/*.sto
+sim/official_pf040/*.sto
+sim/official_pf040/*.log
+sim/control_official/*.log
+sim/models/*.log
+sim/models/guess.sto
+sim/models/_nocond.osim
+sim/__pycache__/
+*.pyc
+
+# web
+web/node_modules/
+web/dist/
+
+# solver byproducts
+*.err
+*.log
+*_tracked_states.sto
+blender/*.blend
