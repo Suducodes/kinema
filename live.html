@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Motion Twin · KINEMA</title>
+  <meta name="description" content="A live skeleto-muscular twin: your camera drives an OpenSim skeleton with 88 muscles, with joint loads and muscle effort estimated in real time on your device." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1113'/%3E%3Cpath d='M9 25l4-9 3 4 3-11 4 16' fill='none' stroke='%23e9e4d8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script type="module" crossorigin src="./assets/live-CJnKRvr3.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/studio-B2CVZs18.js">
+  <link rel="stylesheet" crossorigin href="./assets/studio-LynM0-so.css">
+  <link rel="stylesheet" crossorigin href="./assets/live-Cc_M3PiC.css">
+</head>
+<body class="live-page mirror">
+  <canvas id="stage"></canvas>
+  <div class="loading" id="loading"><span>Building the twin</span><i></i></div>
+
+  <header class="mast">
+    <div class="eyebrow">KINEMA <b>·</b> Live motion lab</div>
+    <h1>Motion Twin</h1>
+    <p>Your movement drives an OpenSim skeleton with <span class="w">88 muscles</span>. Joint loads and muscle effort are estimated live, on this device.</p>
+    <div class="chips"><span id="status-src">Demo</span><span id="status-q">synthetic motion</span><span id="status-fps">– fps</span></div>
+  </header>
+
+  <nav class="shots" aria-label="Mode and view">
+    <div class="seg" id="mode">
+      <button data-mode="free">Free</button>
+      <button data-mode="squat" aria-pressed="true">Squat</button>
+      <button data-mode="lunge">Lunge</button>
+      <button data-mode="single">Single-leg</button>
+      <button data-mode="jump">Jump landing</button>
+    </div>
+    <div class="seg" id="view">
+      <button data-view="front">Front</button>
+      <button data-view="side">Side</button>
+      <button data-view="three" aria-pressed="true">3/4</button>
+      <button data-view="orbit">Orbit</button>
+    </div>
+    <div class="seg" id="look">
+      <button data-look="muscles" aria-pressed="true">Muscles</button>
+      <button data-look="xray">X-ray</button>
+      <button data-look="bones">Bones</button>
+    </div>
+  </nav>
+
+  <aside class="readout" id="readout">
+    <div class="cols"><span></span><b class="w">Right</b><b class="h">Left</b></div>
+    <div class="rows" id="rows"></div>
+    <div class="phase"><span>Trunk lean</span><b id="trunk">–</b><b></b></div>
+  </aside>
+
+  <section class="panel coach" id="coach">
+    <header><span>Coach</span><em id="coach-title">Squat</em></header>
+    <div class="reps"><b id="reps">0</b><span>reps<small id="phase">ready</small></span></div>
+    <div class="last" id="last"></div>
+    <ul class="cues" id="cues"></ul>
+  </section>
+
+  <section class="panel effort" id="effort">
+    <header><span>Muscle effort</span><em><i class="kr"></i>right <i class="kl"></i>left</em></header>
+    <div id="groups"></div>
+    <div class="sub">Working hardest</div>
+    <ol class="top" id="top"></ol>
+  </section>
+
+  <div class="pip" id="pip">
+    <video id="video" playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <span class="pip-tag">camera · stays on this device</span>
+  </div>
+
+  <section class="dock">
+    <div class="transport">
+      <button class="pill accent" id="btn-camera">Use my camera</button>
+      <div class="seg" id="demo-move">
+        <button data-move="squat" aria-pressed="true">Demo squat</button>
+        <button data-move="lunge">Lunge</button>
+        <button data-move="jump">Jump</button>
+      </div>
+      <button class="pill" id="btn-demo" hidden>Demo</button>
+      <button class="pill" id="btn-calib" title="Stand tall, arms by your sides">Calibrate</button>
+      <button class="pill" id="btn-forces" aria-pressed="true" title="Ground force arrows">Forces</button>
+      <button class="pill" id="btn-mirror" aria-pressed="true" title="Mirror the twin like a mirror">Mirror</button>
+      <span class="grow-space"></span>
+      <button class="pill rec" id="btn-rec">● Record</button>
+      <button class="pill" id="btn-export" disabled>Export CSV</button>
+      <span class="clock" id="clock"></span>
+    </div>
+    <div class="charts" id="charts"></div>
+  </section>
+
+  <nav class="extras">
+    <button id="open-method">Method &amp; limits</button>
+    <a class="btn" href="./">Twin Walkers</a>
+    <a class="btn" href="knee.html">Inside the Knee</a>
+  </nav>
+
+  <div class="tip" id="tip" hidden></div>
+  <div class="toast" id="toast"></div>
+  <div class="calib" id="calib" hidden><span>Stand tall, arms by your sides, whole body in view</span><b id="calib-n">3</b></div>
+
+  <dialog id="onboard" class="sheet onboard">
+    <div class="body">
+      <div class="eyebrow">KINEMA <b>·</b> Live motion lab</div>
+      <h2>Step into the lab</h2>
+      <p>Your camera finds 33 points on your body. They drive a full OpenSim skeleton with 88 leg muscles, and a physics solver
+        estimates your joint loads and which muscles are working, every frame. Nothing leaves this device.</p>
+      <div class="inputs">
+        <label>Body mass <span><input id="in-mass" type="number" min="25" max="200" value="70" /> kg</span></label>
+        <label>Height <span><input id="in-height" type="number" min="120" max="220" value="172" /> cm</span></label>
+      </div>
+      <ul class="tips">
+        <li>Stand 2 to 3 m from the camera with your <b>whole body</b> in view, in good light.</li>
+        <li>Turn <b>side-on</b> for squats and lunges: knee and hip angles are most accurate from the side.</li>
+        <li>Hold still for 3 seconds at the start: the twin calibrates to your size.</li>
+      </ul>
+      <div class="actions">
+        <button class="pill accent" id="ob-camera">Use my camera</button>
+        <button class="pill" id="ob-demo">Watch the demo first</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="method" class="sheet method">
+    <div class="body">
+      <h2>Method &amp; limits</h2>
+      <h3>Pipeline, every frame</h3>
+      <ol>
+        <li><b>Tracking.</b> MediaPipe Pose Landmarker finds 33 body points in 3D from one camera, on this device. Each point is
+          smoothed with a One Euro filter.</li>
+        <li><b>Skeleton.</b> Each bone of the Lenhart 2015 OpenSim full-body model is placed by aligning its real body frame to the
+          tracked points, chained joint to joint with lengths fixed at calibration (scaled to your height).</li>
+        <li><b>Joint angles</b> follow OpenSim's conventions (hip flexion, adduction, rotation; knee flexion; ankle dorsiflexion).</li>
+        <li><b>Ground force.</b> The camera has no force plate, so the total ground force is computed from Newton's second law over
+          all body segments (mass from your body weight), and shared between the feet by where the centre of pressure falls.</li>
+        <li><b>Joint moments</b> come from 3D Newton-Euler inverse dynamics up each leg (foot, shank, thigh).</li>
+        <li><b>Muscle effort.</b> Static optimisation shares each leg's joint moments across its 44 muscles, minimising the sum of squared
+          activations. Moment arms come from OpenSim; the quadriceps' leverage through the kneecap comes from a solved OpenSim JAM
+          knee-bending simulation (0 to 130 degrees). Each muscle's capacity follows its force-length curve.</li>
+      </ol>
+      <h3>Self-check</h3>
+      <div id="selftest">Running…</div>
+      <h3>What this cannot do</h3>
+      <ul>
+        <li><b>One camera sees depth poorly.</b> Movements along the camera's line of sight are the least accurate; side-on views suit
+          squats and lunges best.</li>
+        <li><b>Forces are estimated, not measured.</b> Ground forces and muscle activations are model outputs. Fast movements
+          (landings, sprints) amplify tracking noise in the accelerations.</li>
+        <li><b>The muscle-sharing rule is a model choice.</b> Minimising squared activation (OpenSim's default) gives stronger muscles
+          proportionally more load, so in deep squats the large vasti can read near their maximum before smaller synergists do.</li>
+        <li><b>A generic body.</b> Bones and muscles are one adult model scaled to your height and weight; muscles are only modelled for
+          the legs (the arms and trunk carry no muscles here).</li>
+        <li><b>Not medical advice.</b> Coaching cues describe movement; they do not diagnose or prescribe.</li>
+      </ul>
+      <h3>Credits</h3>
+      <p>OpenSim (Stanford) and OpenSim JAM (Smith; Lenhart et al. 2015, Ann Biomed Eng 43:2675). MediaPipe Pose (Google).
+        One Euro filter (Casiez et al. 2012). Rendering three.js.</p>
+    </div>
+    <form method="dialog"><button>Close</button></form>
+  </dialog>
+
+</body>
+</html>
