@@ -7,6 +7,6 @@ export default defineConfig({
   preview: { port: 5194 },
   build: {
     target: 'es2022', chunkSizeWarningLimit: 900,
-    rollupOptions: { input: { main: 'index.html', knee: 'knee.html' } },
+    rollupOptions: { input: { main: 'index.html', knee: 'knee.html', live: 'live.html' } },
   },
 });

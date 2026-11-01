@@ -16,6 +16,18 @@ thigh and hip taking over) emerges from the physics.
 - **X-ray load:** glass bones, muscles coloured by tendon force, and ground reaction force arrows.
 - **Intro:** a short camera move with three captions on first visit.
 
+## Motion Twin (live.html): real-time skeleto-muscular twin
+
+A webcam drives the full-body Lenhart 2015 OpenSim skeleton with 88 leg muscles, entirely in the browser:
+
+1. MediaPipe Pose Landmarker (33 3D points), One Euro smoothing.
+2. Each OpenSim bone placed by aligning its body frame to the points, chained joint to joint with lengths calibrated to the user's height.
+3. Ground force from Newton's second law over all segments, centre of pressure from the whole-body angular-momentum balance.
+4. 3D Newton-Euler inverse dynamics up each leg; static optimisation (sum of squared activations) across 44 muscles per leg with OpenSim moment arms. The quadriceps' leverage through the patella comes from a solved OpenSim JAM knee-bending run (0-130 deg).
+5. Coach (reps, depth, knee valgus, unevenness, tempo, landing softness), X-ray, record and CSV export, a demo performer, and a built-in self-check against known truth.
+
+`live/export_twin.py` builds `web/public/live/` (bones GLB, muscle routes, moment-arm tables). Self-check on a synthetic squat: knee 0.5 deg, hip 2.2 deg, ankle 0.7 deg mean error; standing ground force 1.00 body weight.
+
 ## Status
 
 | Part | State |
