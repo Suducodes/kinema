@@ -4,7 +4,7 @@
  * (scripts, the pose model, wasm, the twin's bones): served from cache at once, refreshed in the
  * background. Nothing from the camera ever passes through here.
  */
-const CACHE = 'motion-twin-v1';
+const CACHE = 'motion-twin-v2';   // bump whenever public/live (twin.glb, twin.json) changes
 const SHELL = ['live.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
