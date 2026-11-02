@@ -7,13 +7,14 @@ export class OneEuro {
   constructor(private minCutoff = 1.2, private beta = 0.5, private dCutoff = 1.0) {}
   private static alpha(cutoff: number, dt: number) { const r = 2 * Math.PI * cutoff * dt; return r / (r + 1); }
   reset() { this.x = NaN; this.t = NaN; this.dx = 0; }
-  filter(value: number, t: number) {
+  /** `cut` scales the minimum cutoff for this sample (below 1 = smoother, e.g. for a poorly seen point). */
+  filter(value: number, t: number, cut = 1) {
     if (Number.isNaN(this.x)) { this.x = value; this.t = t; return value; }
     const dt = Math.max(t - this.t, 1e-3);
     this.t = t;
     const dx = (value - this.x) / dt;
     this.dx += OneEuro.alpha(this.dCutoff, dt) * (dx - this.dx);
-    const cutoff = this.minCutoff + this.beta * Math.abs(this.dx);
+    const cutoff = this.minCutoff * cut + this.beta * Math.abs(this.dx);
     this.x += OneEuro.alpha(cutoff, dt) * (value - this.x);
     return this.x;
   }
@@ -22,9 +23,18 @@ export class OneEuro {
 /** Landmark smoothing used for both camera and demo: jitter-free when still, quick when moving. */
 export const LANDMARK_FILTER = { minCutoff: 1.4, beta: 3.0 };
 
+/**
+ * The filter for one coordinate of one landmark. The face points (0-10) and depth (z, along the camera's
+ * line of sight) are the noisiest outputs of single-camera pose, so they are smoothed harder.
+ */
+export function landmarkFilter(i: number, axis: number) {
+  const head = i <= 10;
+  return new OneEuro((head ? 0.55 : LANDMARK_FILTER.minCutoff) * (axis === 2 ? 0.7 : 1), head ? 1.0 : LANDMARK_FILTER.beta);
+}
+
 /** One Euro filtering of all 33 landmarks of a frame (the demo goes through it like the camera does). */
 export class LandmarkSmoother {
-  private readonly f = Array.from({ length: 99 }, () => new OneEuro(LANDMARK_FILTER.minCutoff, LANDMARK_FILTER.beta));
+  private readonly f = Array.from({ length: 99 }, (_, k) => landmarkFilter(Math.floor(k / 3), k % 3));
   apply<T extends { world: { x: number; y: number; z: number }[]; t: number }>(frame: T): T {
     frame.world.forEach((p, i) => {
       p.x = this.f[i * 3].filter(p.x, frame.t); p.y = this.f[i * 3 + 1].filter(p.y, frame.t); p.z = this.f[i * 3 + 2].filter(p.z, frame.t);

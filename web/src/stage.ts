@@ -22,7 +22,11 @@ export class Stage {
   private holdUntil = 0;
   private readonly clock = new THREE.Clock();
 
-  constructor(canvas: HTMLCanvasElement) {
+  /** Called after the drawing size changes (width, height in CSS pixels). */
+  onResize: ((w: number, h: number) => void) | null = null;
+
+  /** `fit`: size to this element instead of the window (fixed vertical field of view). */
+  constructor(canvas: HTMLCanvasElement, private readonly fit: HTMLElement | null = null) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(this.ratio);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -39,7 +43,8 @@ export class Stage {
     this.controls.maxDistance = 14;
     this.controls.maxPolarAngle = Math.PI * 0.53;   // never below the floor
 
-    addEventListener('resize', () => this.resize());
+    if (fit) new ResizeObserver(() => this.resize()).observe(fit);
+    else addEventListener('resize', () => this.resize());
     this.resize();
     this.renderer.setAnimationLoop(() => {
       const raw = this.clock.getDelta();
@@ -81,9 +86,10 @@ export class Stage {
   }
 
   private resize() {
-    const { innerWidth: w, innerHeight: h } = window;
+    const w = Math.max(1, this.fit ? this.fit.clientWidth : innerWidth), h = Math.max(1, this.fit ? this.fit.clientHeight : innerHeight);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
+    if (this.fit) { this.camera.fov = 30; this.camera.updateProjectionMatrix(); this.onResize?.(w, h); return; }
     // keep horizontal coverage on narrow screens (phones see both walkers)
     this.camera.fov = w / h >= 16 / 9 ? 30 : Math.min(70, 2 * THREE.MathUtils.radToDeg(Math.atan(Math.tan(THREE.MathUtils.degToRad(15)) * (16 / 9) / (w / h))));
     this.camera.updateProjectionMatrix();

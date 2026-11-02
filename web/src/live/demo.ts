@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { TwinMeta, V3 } from './assets';
-import type { Frame } from './body';
+import { modelHeight, type Frame } from './body';
 
 /**
  * A demo performer for visitors without a camera, and the test harness for the pipeline: forward
@@ -17,9 +17,9 @@ const mir = (a: V3) => new THREE.Vector3(a[0], a[1], -a[2]);
 const ease = (x: number) => (1 - Math.cos(Math.PI * Math.min(Math.max(x, 0), 1))) / 2;
 
 export class Demo {
-  private readonly scale = 1.04;   // a ~1.75 m performer
+  private readonly scale: number;   // a 1.75 m performer
   private standY: number | undefined;
-  constructor(private readonly meta: TwinMeta, public move: DemoMove = 'squat') {}
+  constructor(private readonly meta: TwinMeta, public move: DemoMove = 'squat') { this.scale = 1.75 / modelHeight(meta); }
 
   /** Joint angles (deg) and pelvis lift (m) of the routine at time t (s). */
   private pose(t: number) {

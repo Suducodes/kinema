@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Stage } from '../stage';
 import { softboxEnvironment, sky } from '../studio';
 import type { Twin } from './assets';
-import { SIDES, type Body, type Side } from './body';
+import { SIDES, type Body, type SegPose, type Side } from './body';
 import type { Physics } from './physics';
 
 /**
@@ -66,7 +66,7 @@ class Muscle {
     this.mesh.frustumCulled = false;
   }
 
-  update(body: Body, scale: number) {
+  update(body: { seg: Record<string, SegPose> }, scale: number) {
     // route points to world, then evenly respaced along the route
     let total = 0;
     this.route.forEach(([seg, local], k) => {
@@ -150,6 +150,11 @@ export class LiveScene {
   private readonly support: THREE.Line;
   private readonly floor: THREE.ShaderMaterial;
   look: Look = 'muscles';
+  /** What is drawn: the reconstruction eased toward each new pose at display rate (tracking arrives at
+   * 15-30 Hz with a little jitter; the eye wants continuous motion). Physics uses the unsmoothed pose. */
+  private readonly shown: { seg: Record<string, SegPose> } = { seg: {} };
+  private readonly comShown = new THREE.Vector3();
+  private snapNext = true;
 
   constructor(stage: Stage, private readonly twin: Twin) {
     stage.scene.environment = softboxEnvironment(stage.renderer);
@@ -203,9 +208,22 @@ export class LiveScene {
     for (const look of ['xray', 'bones', 'muscles'] as Look[]) { this.setLook(look); stage.renderer.compile(stage.scene, stage.camera); }
   }
 
-  update(body: Body, phys: Physics, showForces: boolean) {
+  /** Jump straight to the next pose (new source, seek). */
+  snap() { this.snapNext = true; }
+
+  /** `dt` (s) since the last draw; 0 shows the pose exactly. */
+  update(body: Body, phys: Physics, showForces: boolean, dt = 0) {
+    const a = this.snapNext || dt <= 0 ? 1 : 1 - Math.exp(-dt / 0.045);
+    for (const [k, p] of Object.entries(body.seg)) {
+      const d = (this.shown.seg[k] ??= { pos: p.pos.clone(), quat: p.quat.clone(), scale: p.scale });
+      if (a >= 1 || d.pos.distanceToSquared(p.pos) > 0.25) { d.pos.copy(p.pos); d.quat.copy(p.quat); d.scale = p.scale; }
+      else { d.pos.lerp(p.pos, a); d.quat.slerp(p.quat, a); d.scale += (p.scale - d.scale) * a; }
+    }
+    if (a >= 1) this.comShown.copy(body.pts.com); else this.comShown.lerp(body.pts.com, a);
+    this.snapNext = false;
+    const seg = this.shown.seg;
     for (const [name, mesh] of this.bones) {
-      const p = body.seg[name];
+      const p = seg[name];
       if (!p) continue;
       mesh.position.copy(p.pos); mesh.quaternion.copy(p.quat); mesh.scale.setScalar(p.scale);
     }
@@ -213,11 +231,11 @@ export class LiveScene {
     for (let i = 0; i < this.muscles.length; i++) {
       const mu = this.muscles[i], k = i % names.length;
       if (this.look === 'bones') continue;
-      mu.update(body, body.seg[`femur_${mu.side}`].scale);
+      mu.update(this.shown, seg[`femur_${mu.side}`].scale);
       mu.colour(phys.res[mu.side].act[k], this.look);
     }
     for (const s of SIDES) this.arrows[s].set(phys.res[s].cop.clone().setY(0.003), showForces ? phys.res[s].grf : new THREE.Vector3(), 0.55 / phys.bodyWeight);
-    const c = body.pts.com;
+    const c = this.comShown;
     this.com.position.copy(c);
     const lp = this.comLine.geometry.attributes.position as THREE.BufferAttribute;
     lp.setXYZ(0, c.x, c.y, c.z); lp.setXYZ(1, c.x, 0.002, c.z); lp.needsUpdate = true;

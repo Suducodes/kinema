@@ -2,113 +2,222 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Motion Twin · KINEMA</title>
-  <meta name="description" content="A live skeleto-muscular twin: your camera drives an OpenSim skeleton with 88 muscles, with joint loads and muscle effort estimated in real time on your device." />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1113'/%3E%3Cpath d='M9 25l4-9 3 4 3-11 4 16' fill='none' stroke='%23e9e4d8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <meta name="description" content="Real-time rehabilitation biomechanics: your camera drives an OpenSim skeleton with 88 muscles, with joint loads and muscle effort estimated live on your device." />
+  <meta name="theme-color" content="#0d1215" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="/icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Motion Twin" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </head>
-<body class="live-page mirror">
-  <canvas id="stage"></canvas>
+<body class="live-page mirror" data-pview="split">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.3-2h7l1.3 2h1.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18.5 3v4h-4M5.5 21v-4h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4.2" fill="currentColor"/></symbol>
+    <symbol id="i-focus" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="8.3" r="1.6" fill="currentColor"/><path d="M12 10.5v4.2M9.3 12h5.4M12 14.7l-2 3M12 14.7l2 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></symbol>
+    <symbol id="i-split" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 4v16" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-twin" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="2.2" fill="currentColor"/><path d="M12 8.5v6.5M8 11h8M12 15l-3 5M12 15l3 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-frame" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="9" r="2" fill="currentColor"/><path d="M8.5 17c.6-2.4 1.9-3.7 3.5-3.7s2.9 1.3 3.5 3.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5M5 17v2.5h14V17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
   <div class="loading" id="loading"><span>Building the twin</span><i></i></div>
 
-  <header class="mast">
-    <div class="eyebrow">KINEMA <b>·</b> Live motion lab</div>
-    <h1>Motion Twin</h1>
-    <p>Your movement drives an OpenSim skeleton with <span class="w">88 muscles</span>. Joint loads and muscle effort are estimated live, on this device.</p>
-    <div class="chips"><span id="status-src">Demo</span><span id="status-q">synthetic motion</span><span id="status-fps">– fps</span></div>
-  </header>
-
-  <nav class="shots" aria-label="Mode and view">
-    <div class="seg" id="mode">
-      <button data-mode="free">Free</button>
-      <button data-mode="squat" aria-pressed="true">Squat</button>
-      <button data-mode="lunge">Lunge</button>
-      <button data-mode="single">Single-leg</button>
-      <button data-mode="jump">Jump landing</button>
-    </div>
-    <div class="seg" id="view">
-      <button data-view="front">Front</button>
-      <button data-view="side">Side</button>
-      <button data-view="three" aria-pressed="true">3/4</button>
-      <button data-view="orbit">Orbit</button>
-    </div>
-    <div class="seg" id="look">
-      <button data-look="muscles" aria-pressed="true">Muscles</button>
-      <button data-look="xray">X-ray</button>
-      <button data-look="bones">Bones</button>
-    </div>
-  </nav>
-
-  <aside class="readout" id="readout">
-    <div class="cols"><span></span><b class="w">Right</b><b class="h">Left</b></div>
-    <div class="rows" id="rows"></div>
-    <div class="phase"><span>Trunk lean</span><b id="trunk">–</b><b></b></div>
-  </aside>
-
-  <section class="panel coach" id="coach">
-    <header><span>Coach</span><em id="coach-title">Squat</em></header>
-    <div class="reps"><b id="reps">0</b><span>reps<small id="phase">ready</small></span></div>
-    <div class="last" id="last"></div>
-    <ul class="cues" id="cues"></ul>
-  </section>
-
-  <section class="panel effort" id="effort">
-    <header><span>Muscle effort</span><em><i class="kr"></i>right <i class="kl"></i>left</em></header>
-    <div id="groups"></div>
-    <div class="sub">Working hardest</div>
-    <ol class="top" id="top"></ol>
-  </section>
-
-  <div class="pip" id="pip">
-    <video id="video" playsinline muted></video>
-    <canvas id="overlay"></canvas>
-    <span class="pip-tag">camera · stays on this device</span>
-  </div>
-
-  <section class="dock">
-    <div class="transport">
-      <button class="pill accent" id="btn-camera">Use my camera</button>
-      <div class="seg" id="demo-move">
-        <button data-move="squat" aria-pressed="true">Demo squat</button>
-        <button data-move="lunge">Lunge</button>
-        <button data-move="jump">Jump</button>
+  <div class="app">
+    <header class="bar">
+      <div class="brand">
+        <img src="/icons/icon-192.png" alt="" width="34" height="34" />
+        <div><b>Motion Twin</b><span>Real-time rehab biomechanics</span></div>
       </div>
-      <button class="pill" id="btn-demo" hidden>Demo</button>
-      <button class="pill" id="btn-calib" title="Stand tall, arms by your sides">Calibrate</button>
-      <button class="pill" id="btn-forces" aria-pressed="true" title="Ground force arrows">Forces</button>
-      <button class="pill" id="btn-mirror" aria-pressed="true" title="Mirror the twin like a mirror">Mirror</button>
-      <span class="grow-space"></span>
-      <button class="pill rec" id="btn-rec">● Record</button>
-      <button class="pill" id="btn-export" disabled>Export CSV</button>
-      <span class="clock" id="clock"></span>
-    </div>
-    <div class="charts" id="charts"></div>
-  </section>
+      <div class="status">
+        <span class="chip" id="status-src">Demo</span>
+        <span class="chip wide-only" id="status-q">synthetic motion</span>
+        <span class="chip wide-only" id="status-fps">– fps</span>
+      </div>
+      <div class="bar-actions">
+        <button class="ghost" id="btn-install" hidden><svg><use href="#i-install"/></svg><span>Install app</span></button>
+        <button class="ghost" id="btn-focus" title="Skeleton only (F)"><svg><use href="#i-focus"/></svg><span>Skeleton only</span></button>
+        <button class="ghost icon-only" id="btn-menu" aria-label="Menu"><svg><use href="#i-more"/></svg></button>
+      </div>
+    </header>
 
-  <nav class="extras">
-    <button id="open-method">Method &amp; limits</button>
-    <a class="btn" href="./">Twin Walkers</a>
-    <a class="btn" href="knee.html">Inside the Knee</a>
-  </nav>
+    <main class="work" id="work">
+      <section class="cam-col" id="cam-col">
+        <div class="cam-card" id="pip">
+          <video id="video" playsinline muted></video>
+          <canvas id="overlay"></canvas>
+          <div class="cam-empty" id="cam-empty">
+            <svg class="ghost-figure" viewBox="0 0 60 120" aria-hidden="true"><circle cx="30" cy="12" r="8"/><path d="M30 22v38M14 34l16-6 16 6M14 34l-4 26M46 34l4 26M30 60l-9 52M30 60l9 52"/></svg>
+            <b>Camera off</b>
+            <span>The twin is following the demo performer. Your video never leaves this device.</span>
+            <button class="pill accent" data-act="camera">Use my camera</button>
+          </div>
+          <div class="hint" id="cam-hint" hidden></div>
+          <button class="round flip" data-act="flip" title="Switch to the other camera" hidden><svg><use href="#i-flip"/></svg></button>
+          <span class="cam-tag" id="cam-tag">Front camera</span>
+        </div>
+        <section class="card coach" id="coach">
+          <header><span>Coach</span><em id="coach-title">Squat</em></header>
+          <div class="modes" id="mode">
+            <button data-mode="free">Free</button>
+            <button data-mode="squat" aria-pressed="true">Squat</button>
+            <button data-mode="lunge">Lunge</button>
+            <button data-mode="single">Single-leg</button>
+            <button data-mode="jump">Landing</button>
+          </div>
+          <div class="reps"><b id="reps">0</b><span>reps<small id="phase">ready</small></span></div>
+          <div class="last" id="last"></div>
+          <ul class="cues" id="cues"></ul>
+        </section>
+      </section>
+
+      <section class="stage-wrap" id="stage-wrap">
+        <canvas id="stage"></canvas>
+        <div class="stage-bar">
+          <div class="seg" id="view">
+            <button data-view="front">Front</button>
+            <button data-view="side">Side</button>
+            <button data-view="three" aria-pressed="true">3/4</button>
+            <button data-view="orbit">Orbit</button>
+          </div>
+          <div class="seg" id="look">
+            <button data-look="muscles" aria-pressed="true">Muscles</button>
+            <button data-look="xray">X-ray</button>
+            <button data-look="bones">Bones</button>
+          </div>
+        </div>
+        <div class="hint stage-hint" id="stage-hint" hidden></div>
+        <div class="ramp-legend" id="ramp-legend"><span>Muscle effort</span><i></i><em>rest</em><em>hard</em></div>
+        <button class="focus-exit" id="focus-exit">Exit skeleton only <kbd>F</kbd></button>
+      </section>
+
+      <aside class="data-col" id="data">
+        <div class="grab" id="grab" aria-hidden="true"></div>
+        <nav class="tabs" id="tabs" role="tablist">
+          <button data-tab="coach" class="phone-only">Coach</button>
+          <button data-tab="joints" aria-selected="true">Joints</button>
+          <button data-tab="muscles">Muscles</button>
+          <button data-tab="trends">Trends</button>
+        </nav>
+        <div class="peek" id="peek"></div>
+        <div class="panes">
+          <div class="pane" id="tab-coach"></div>
+          <div class="pane on" id="tab-joints">
+            <div class="metrics">
+              <div class="cols"><span></span><b class="r">Right</b><b class="l">Left</b></div>
+              <div id="rows"></div>
+              <div class="row trunk"><span>Trunk lean <small>forward +</small></span><b id="trunk">–</b><b></b></div>
+            </div>
+          </div>
+          <div class="pane" id="tab-muscles">
+            <div class="sub">By group <em><i class="kr"></i>right <i class="kl"></i>left</em></div>
+            <div id="groups"></div>
+            <div class="sub">Working hardest</div>
+            <ol class="top" id="top"></ol>
+          </div>
+          <div class="pane" id="tab-trends"><div class="charts" id="charts"></div></div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="controls">
+      <div class="ctl">
+        <button class="pill accent" id="btn-camera" data-act="camera"><svg><use href="#i-cam"/></svg><span>Use my camera</span></button>
+        <button class="round" data-act="flip" title="Switch camera" hidden><svg><use href="#i-flip"/></svg></button>
+      </div>
+      <div class="ctl desk-only">
+        <span class="lab">Demo</span>
+        <div class="seg" data-group="move">
+          <button data-move="squat" aria-pressed="true">Squat</button>
+          <button data-move="lunge">Lunge</button>
+          <button data-move="jump">Jump</button>
+        </div>
+      </div>
+      <div class="ctl desk-only">
+        <button class="pill" data-act="calib" title="Stand tall, arms by your sides">Calibrate</button>
+        <button class="pill" data-act="forces" aria-pressed="true" title="Ground force arrows">Forces</button>
+        <button class="pill" data-act="mirror" aria-pressed="true" title="Show the twin like a mirror">Mirror</button>
+      </div>
+      <div class="seg phone-only" id="pview" aria-label="Screen layout">
+        <button data-pview="split" aria-pressed="true" aria-label="Camera and twin"><svg><use href="#i-split"/></svg></button>
+        <button data-pview="twin" aria-label="Twin"><svg><use href="#i-twin"/></svg></button>
+        <button data-pview="camera" aria-label="Camera view"><svg><use href="#i-frame"/></svg></button>
+      </div>
+      <span class="grow-space"></span>
+      <div class="ctl">
+        <button class="pill rec" data-act="rec"><svg><use href="#i-rec"/></svg><span>Record</span></button>
+        <button class="pill desk-only" data-act="export" disabled>Export CSV</button>
+        <span class="clock" id="clock"></span>
+      </div>
+    </footer>
+  </div>
 
   <div class="tip" id="tip" hidden></div>
   <div class="toast" id="toast"></div>
   <div class="calib" id="calib" hidden><span>Stand tall, arms by your sides, whole body in view</span><b id="calib-n">3</b></div>
 
+  <dialog id="menu" class="sheet menu">
+    <div class="body">
+      <section class="phone-only">
+        <h3>Demo performer</h3>
+        <div class="seg" data-group="move">
+          <button data-move="squat" aria-pressed="true">Squat</button>
+          <button data-move="lunge">Lunge</button>
+          <button data-move="jump">Jump</button>
+        </div>
+        <h3>View</h3>
+        <div class="seg" data-group="view">
+          <button data-view="front">Front</button>
+          <button data-view="side">Side</button>
+          <button data-view="three" aria-pressed="true">3/4</button>
+          <button data-view="orbit">Orbit</button>
+        </div>
+        <div class="seg" data-group="look">
+          <button data-look="muscles" aria-pressed="true">Muscles</button>
+          <button data-look="xray">X-ray</button>
+          <button data-look="bones">Bones</button>
+        </div>
+        <h3>Session</h3>
+        <div class="row-btns">
+          <button class="pill" data-act="calib">Calibrate</button>
+          <button class="pill" data-act="forces" aria-pressed="true">Forces</button>
+          <button class="pill" data-act="mirror" aria-pressed="true">Mirror</button>
+          <button class="pill" data-act="export" disabled>Export CSV</button>
+        </div>
+      </section>
+      <h3>App</h3>
+      <div class="list">
+        <button data-act="profile">Body and setup<small>Mass, height, how to stand</small></button>
+        <button data-act="method">Method &amp; limits<small>How each number is computed, and the self-check</small></button>
+        <button data-act="install" id="menu-install">Install on this device<small id="install-how">Adds Motion Twin to your home screen or dock</small></button>
+        <a href="./">Twin Walkers<small>Predictive gait simulations, healthy vs weak</small></a>
+        <a href="knee.html">Inside the Knee<small>Ligament mechanics with OpenSim JAM</small></a>
+      </div>
+    </div>
+    <form method="dialog"><button>Close</button></form>
+  </dialog>
+
   <dialog id="onboard" class="sheet onboard">
     <div class="body">
-      <div class="eyebrow">KINEMA <b>·</b> Live motion lab</div>
+      <div class="brand big"><img src="/icons/icon-192.png" alt="" width="44" height="44" /><div><b>Motion Twin</b><span>Real-time rehab biomechanics</span></div></div>
       <h2>Step into the lab</h2>
       <p>Your camera finds 33 points on your body. They drive a full OpenSim skeleton with 88 leg muscles, and a physics solver
         estimates your joint loads and which muscles are working, every frame. Nothing leaves this device.</p>
       <div class="inputs">
-        <label>Body mass <span><input id="in-mass" type="number" min="25" max="200" value="70" /> kg</span></label>
-        <label>Height <span><input id="in-height" type="number" min="120" max="220" value="172" /> cm</span></label>
+        <label>Body mass <span><input id="in-mass" type="number" inputmode="decimal" min="25" max="200" value="70" /> kg</span></label>
+        <label>Height <span><input id="in-height" type="number" inputmode="decimal" min="120" max="220" value="172" /> cm</span></label>
       </div>
       <ul class="tips">
-        <li>Stand 2 to 3 m from the camera with your <b>whole body</b> in view, in good light.</li>
+        <li>Stand 2 to 3 m from the camera with your <b>whole body, feet included</b>, in view, in good light.</li>
+        <li>On a phone, prop it up in <b>portrait</b>, or have someone film you with the <b>back camera</b>.</li>
         <li>Turn <b>side-on</b> for squats and lunges: knee and hip angles are most accurate from the side.</li>
-        <li>Hold still for 3 seconds at the start: the twin calibrates to your size.</li>
+        <li>Hold still for 3 seconds at the start: the twin calibrates to you.</li>
       </ul>
       <div class="actions">
         <button class="pill accent" id="ob-camera">Use my camera</button>
@@ -123,9 +232,11 @@
       <h3>Pipeline, every frame</h3>
       <ol>
         <li><b>Tracking.</b> MediaPipe Pose Landmarker finds 33 body points in 3D from one camera, on this device. Each point is
-          smoothed with a One Euro filter.</li>
+          smoothed with a One Euro filter, harder for the face, for depth and for points the model can barely see. Legs out of view
+          settle into relaxed standing rather than following the model's guesses.</li>
         <li><b>Skeleton.</b> Each bone of the Lenhart 2015 OpenSim full-body model is placed by aligning its real body frame to the
-          tracked points, chained joint to joint with lengths fixed at calibration (scaled to your height).</li>
+          tracked points, chained joint to joint. The whole skeleton is scaled by one factor from your height, so it keeps adult
+          proportions; the points only give directions.</li>
         <li><b>Joint angles</b> follow OpenSim's conventions (hip flexion, adduction, rotation; knee flexion; ankle dorsiflexion).</li>
         <li><b>Ground force.</b> The camera has no force plate, so the total ground force is computed from Newton's second law over
           all body segments (mass from your body weight), and shared between the feet by where the centre of pressure falls.</li>
@@ -133,6 +244,8 @@
         <li><b>Muscle effort.</b> Static optimisation shares each leg's joint moments across its 44 muscles, minimising the sum of squared
           activations. Moment arms come from OpenSim; the quadriceps' leverage through the kneecap comes from a solved OpenSim JAM
           knee-bending simulation (0 to 130 degrees). Each muscle's capacity follows its force-length curve.</li>
+        <li><b>Display.</b> The drawn skeleton eases toward each new pose at screen rate (a 45 ms time constant), so motion stays
+          continuous between camera frames. Numbers and physics use the pose itself.</li>
       </ol>
       <h3>Self-check</h3>
       <div id="selftest">Running…</div>

@@ -48,6 +48,14 @@ function alignQuat(pl: THREE.Vector3, sl: THREE.Vector3, pw: THREE.Vector3, sw: 
   return out.setFromRotationMatrix(W.multiply(L.transpose()));
 }
 
+/** Standing height of the unscaled model, floor to skull top, every segment in its neutral pose. */
+export function modelHeight(meta: TwinMeta) {
+  const r = meta.refs;
+  const top = r.pelvis.lumbar[1] + r.torso.neck[1] + r.head.top[1];
+  const bottom = r.pelvis.hipL[1] + r.femur.knee[1] + r.tibia.ankle[1] - r.foot.ankle[1] + r.foot.heel[1];
+  return top - bottom + 0.02;   // heel pad and scalp
+}
+
 const smooth = (e0: number, e1: number, x: number) => { const t = Math.min(Math.max((x - e0) / (e1 - e0), 0), 1); return t * t * (3 - 2 * t); };
 
 export class Body {
@@ -56,7 +64,9 @@ export class Body {
   /** Named world points of the reconstructed skeleton (joint centres, heel, toe ...). */
   readonly pts: Record<string, THREE.Vector3> = {};
   readonly ref: Record<string, THREE.Vector3> = {};
-  /** Segment scale factors (twin length / model length), fixed by calibration. */
+  /** Segment scale factors (twin length / model length): one factor for every segment, from the user's
+   * height, so the twin keeps adult proportions. Landmark distances are too noisy (and guessed for limbs
+   * out of view) to size individual bones. */
   readonly scale: Record<string, number> = {};
   private samples: Record<string, number[]> = {};
   calibrated = false;
@@ -85,6 +95,7 @@ export class Body {
       this.seg[k] = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 };
       this.scale[k.replace(/_[RL]$/, '')] = 1;
     }
+    this.setHeight(1.72);
     const z = (): Angles => ({ hip_flex: 0, hip_add: 0, hip_rot: 0, knee_flex: 0, ankle_flex: 0, valgus: 0, elbow: 0 });
     this.angles = { R: z(), L: z() };
   }
@@ -133,18 +144,23 @@ export class Body {
     this.leanSamples ??= [];
   }
 
+  /** Scale the whole twin to a standing height (m). */
+  setHeight(h: number) {
+    const k = h / modelHeight(this.meta);
+    for (const key of Object.keys(this.scale)) this.scale[key] = k;
+  }
+
   finishCalibration(userHeight: number) {
     const median = (a: number[]) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)] ?? 1; };
-    for (const [k, a] of Object.entries(this.samples)) this.scale[k] = median(a) / this.modelLength(k);
-    // standing height of the scaled twin (floor to skull top), then one gain so it matches the user
-    const r = this.ref, sc = this.scale;
-    const legs = sc.tibia * r.ankleT_L.length() + sc.femur * r.knee_L.length() + sc.foot * Math.abs(r.ankleF_L.y - r.heel_L.y);
-    const pelvisToHip = -sc.pelvis * r.hipL.y;
-    const trunk = sc.torso * (r.shoulderL.clone().add(r.shoulderR).multiplyScalar(0.5).length() * 1.0) + sc.pelvis * r.lumbar.y;
-    const neckToTop = sc.head * r.headTop.y + 0.02;
-    const est = legs + pelvisToHip + trunk + neckToTop;
-    this.heightGain = Math.min(Math.max(userHeight / est, 0.75), 1.35);
-    for (const k of Object.keys(this.scale)) this.scale[k] *= this.heightGain;
+    this.setHeight(userHeight);
+    // MediaPipe's metric scale is approximate: one gain maps landmark distances onto the twin. The median
+    // over the long bones is robust to a limb that is out of view (its length is a guess).
+    const ratios: number[] = [];
+    for (const k of ['pelvis', 'torso', 'femur', 'tibia', 'humerus', 'forearm']) {
+      const m = median(this.samples[k] ?? []);
+      if (m > 0.02) ratios.push((this.scale[k] * this.modelLength(k)) / m);
+    }
+    this.heightGain = ratios.length ? Math.min(Math.max(median(ratios), 0.75), 1.35) : 1;
     this.samples = {};
     if (this.leanSamples?.length) this.leanOffset = this.leanSamples.reduce((a, b) => a + b, 0) / this.leanSamples.length;
     this.leanSamples = null;
@@ -153,18 +169,8 @@ export class Body {
   }
   private needStanding = false;
 
-  /** Before calibration: follow the measured lengths smoothly so the twin is already sensible. */
-  private autoScale(w: THREE.Vector3[]) {
-    const m = this.measured(w);
-    for (const [k, v] of Object.entries(m)) {
-      const target = v / this.modelLength(k);
-      if (Number.isFinite(target) && target > 0.3 && target < 3) this.scale[k] += (target - this.scale[k]) * 0.05;
-    }
-  }
-
   /** Reconstruct every segment from one frame of landmarks. */
   update(f: Frame) {
-    if (!this.calibrated) this.autoScale(f.world);
     const g = this.heightGain;
     const w = f.world.map((p) => p.clone().multiplyScalar(g));
     const P = (i: number) => w[i];
@@ -204,8 +210,12 @@ export class Body {
     alignQuat(shLocal, r.shoulderR.clone().sub(r.shoulderL), shMid.clone().sub(lumbar), zT, q);
     place('torso', lumbar, q, sc.torso);
     const neck = toWorld('torso', r.neck);
+    // the head follows the ears, held 40 % toward the trunk's own line: ear points are among the noisiest
+    // landmarks, and a nodding skull reads as tracking error, not movement
     const earMid = mid(P(LM.lEar), P(LM.rEar));
-    alignQuat(r.headCenter, new THREE.Vector3(0, 0, 1), earMid.clone().sub(neck), P(LM.rEar).clone().sub(P(LM.lEar)), q);
+    const headDir = r.headCenter.clone().applyQuaternion(S.torso.quat).normalize().lerp(earMid.clone().sub(neck).normalize(), 0.6);
+    const headLat = zT.clone().lerp(P(LM.rEar).clone().sub(P(LM.lEar)).normalize(), 0.6);
+    alignQuat(r.headCenter, new THREE.Vector3(0, 0, 1), headDir, headLat, q);
     place('head', neck, q, sc.head);
     pts.lumbar = lumbar; pts.neck = neck; pts.headTop = toWorld('head', r.headTop);
 

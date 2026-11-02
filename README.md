@@ -26,6 +26,8 @@ A webcam drives the full-body Lenhart 2015 OpenSim skeleton with 88 leg muscles,
 4. 3D Newton-Euler inverse dynamics up each leg; static optimisation (sum of squared activations) across 44 muscles per leg with OpenSim moment arms. The quadriceps' leverage through the patella comes from a solved OpenSim JAM knee-bending run (0-130 deg).
 5. Coach (reps, depth, knee valgus, unevenness, tempo, landing softness), X-ray, record and CSV export, a demo performer, and a built-in self-check against known truth.
 
+It installs as an app (web manifest + service worker; works offline once loaded): portrait camera view with auto-framing, a skeleton-only mode, phone layouts with front/back camera, and the whole skeleton scaled by one factor from the user's height.
+
 `live/export_twin.py` builds `web/public/live/` (bones GLB, muscle routes, moment-arm tables). Self-check on a synthetic squat: knee 0.5 deg, hip 2.2 deg, ankle 0.7 deg mean error; standing ground force 1.00 body weight.
 
 ## Status
