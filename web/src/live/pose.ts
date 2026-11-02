@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
+import { FilesetResolver, HandLandmarker, PoseLandmarker } from '@mediapipe/tasks-vision';
 import { landmarkFilter } from './filters';
-import type { Frame } from './body';
+import type { Frame, Side } from './body';
 
 /**
  * Camera -> landmarks with MediaPipe Pose Landmarker (runs on this device; no video leaves it).
@@ -15,7 +15,11 @@ export interface Tracked {
   frame: Frame; image: { x: number; y: number; v: number }[]; quality: number;
   /** How well the feet are seen (0-1): below ~0.5 the person should step back. */
   feet: number;
+  /** Tracked hands in the image (for the overlay). */
+  handImage: Partial<Record<Side, { x: number; y: number }[]>>;
 }
+/** Google's published hand model, fetched once by the browser (only the model comes from the network). */
+const HAND_MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 export type Facing = 'user' | 'environment';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -23,6 +27,14 @@ const smooth = (e0: number, e1: number, x: number) => { const t = Math.min(Math.
 
 export class Tracker {
   private landmarker: PoseLandmarker | null = null;
+  private files: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>> | null = null;
+  private hand: HandLandmarker | null = null;
+  private handLoading: Promise<void> | null = null;
+  private handF: Record<Side, ReturnType<typeof landmarkFilter>[]> = {
+    R: Array.from({ length: 63 }, () => landmarkFilter(20, 0)), L: Array.from({ length: 63 }, () => landmarkFilter(20, 0)) };
+  private handSeen: Record<Side, { pts: THREE.Vector3[]; img: { x: number; y: number }[]; t: number } | null> = { R: null, L: null };
+  /** Track the hands too (fingers, forearm rotation, wrist): a second model, so it costs some frame rate. */
+  handsOn = false;
   private stream: MediaStream | null = null;
   private filters = Array.from({ length: 99 }, (_, k) => landmarkFilter(Math.floor(k / 3), k % 3));
   private last = Array.from({ length: 33 }, () => new THREE.Vector3());
@@ -37,13 +49,26 @@ export class Tracker {
   async init(base: string, onStatus: (s: string) => void) {
     if (this.landmarker) return;
     onStatus('Loading the pose model');
-    const files = await FilesetResolver.forVisionTasks(`${base}mediapipe/wasm`);
+    const files = this.files = await FilesetResolver.forVisionTasks(`${base}mediapipe/wasm`);
     const make = (delegate: 'GPU' | 'CPU') => PoseLandmarker.createFromOptions(files, {
       baseOptions: { modelAssetPath: `${base}models/pose_landmarker_full.task`, delegate },
       runningMode: 'VIDEO', numPoses: 1,
       minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
     });
     try { this.landmarker = await make('GPU'); } catch { this.landmarker = await make('CPU'); }
+  }
+
+  /** Load the hand model on first use (resolves when ready; failure turns hand tracking off). */
+  loadHands(): Promise<void> {
+    if (this.hand || !this.files) return Promise.resolve();
+    this.handLoading ??= (async () => {
+      const make = (delegate: 'GPU' | 'CPU') => HandLandmarker.createFromOptions(this.files!, {
+        baseOptions: { modelAssetPath: HAND_MODEL, delegate }, runningMode: 'VIDEO', numHands: 2,
+        minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+      });
+      try { this.hand = await make('GPU'); } catch { this.hand = await make('CPU'); }
+    })().catch((e) => { this.handsOn = false; this.handLoading = null; throw e; });
+    return this.handLoading;
   }
 
   /** Open a camera. 640x480 is plenty (the model resizes its input) and keeps webcams at 30 fps. */
@@ -114,6 +139,7 @@ export class Tracker {
       world.push(p);
     }
     const image = il.map((p) => ({ x: p.x, y: p.y, v: p.visibility ?? 1 }));
+    const hands = this.trackHands(video, tMs, t, image);
     let lift: number | null = null;
     if (this.hipY0 !== null) {
       const hip = (il[23].y + il[24].y) / 2;
@@ -122,6 +148,31 @@ export class Tracker {
     const key = [11, 12, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
     const quality = key.reduce((a, i) => a + vis[i], 0) / key.length;
     const feet = [27, 28, 29, 30].reduce((a, i) => a + vis[i], 0) / 4;
-    return { frame: { world, visibility: vis, lift, t }, image, quality, feet };
+    const handImage: Tracked['handImage'] = {};
+    for (const s of ['R', 'L'] as Side[]) if (hands[s]) handImage[s] = this.handSeen[s]!.img;
+    return { frame: { world, visibility: vis, lift, t, hands }, image, quality, feet, handImage };
+  }
+
+  /** Hands: each detected hand goes to the body side whose pose wrist is nearest in the image. */
+  private trackHands(video: HTMLVideoElement, tMs: number, t: number, pose: { x: number; y: number; v: number }[]) {
+    const out: Partial<Record<Side, THREE.Vector3[]>> = {};
+    if (!this.handsOn || !this.hand) return out;
+    const res = this.hand.detectForVideo(video, tMs);
+    const taken = new Set<Side>();
+    res.landmarks.forEach((img, k) => {
+      const d = (i: number) => Math.hypot(img[0].x - pose[i].x, img[0].y - pose[i].y);
+      let side: Side = d(16) < d(15) ? 'R' : 'L';
+      if (taken.has(side)) side = side === 'R' ? 'L' : 'R';
+      if (Math.min(d(15), d(16)) > 0.2 || taken.has(side)) return;
+      taken.add(side);
+      const wl = res.worldLandmarks[k], f = this.handF[side];
+      const prev = this.handSeen[side];
+      if (!prev || t - prev.t > 0.5) f.forEach((x) => x.reset());
+      const pts = wl.map((p, i) => new THREE.Vector3(f[i * 3].filter(p.x, t), f[i * 3 + 1].filter(-p.y, t), f[i * 3 + 2].filter(-p.z, t)));
+      this.handSeen[side] = { pts, img: img.map((p) => ({ x: p.x, y: p.y })), t };
+    });
+    // a hand missed for a moment keeps its last shape; after 0.4 s the fingers return to rest
+    for (const s of ['R', 'L'] as Side[]) { const h = this.handSeen[s]; if (h && t - h.t < 0.4) out[s] = h.pts; }
+    return out;
   }
 }

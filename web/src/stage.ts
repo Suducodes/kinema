@@ -22,6 +22,8 @@ export class Stage {
   private holdUntil = 0;
   private readonly clock = new THREE.Clock();
 
+  /** Render through this camera instead of the orbit camera (the X-ray mirror). */
+  override: THREE.Camera | null = null;
   /** Called after the drawing size changes (width, height in CSS pixels). */
   onResize: ((w: number, h: number) => void) | null = null;
 
@@ -51,7 +53,7 @@ export class Stage {
       const dt = Math.min(raw, 0.1);
       for (const h of this.hooks) h(dt, this.clock.elapsedTime);
       this.controls.update();
-      this.renderer.render(this.scene, this.camera);
+      this.renderer.render(this.scene, this.override ?? this.camera);
       this.adaptResolution(raw);
     });
   }

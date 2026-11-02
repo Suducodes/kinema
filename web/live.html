@@ -24,6 +24,7 @@
     <symbol id="i-split" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 4v16" stroke="currentColor" stroke-width="1.7"/></symbol>
     <symbol id="i-twin" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="2.2" fill="currentColor"/><path d="M12 8.5v6.5M8 11h8M12 15l-3 5M12 15l3 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
     <symbol id="i-frame" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="9" r="2" fill="currentColor"/><path d="M8.5 17c.6-2.4 1.9-3.7 3.5-3.7s2.9 1.3 3.5 3.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-fx" viewBox="0 0 24 24"><path d="M12 3l1.6 4.6L18 9.2l-4.4 1.6L12 15.4l-1.6-4.6L6 9.2l4.4-1.6zM18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8zM5.5 15l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6L3.3 17.2l1.6-.6z" fill="currentColor"/></symbol>
     <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5M5 17v2.5h14V17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </svg>
 
@@ -92,6 +93,25 @@
             <button data-look="bones">Bones</button>
           </div>
         </div>
+        <div class="arc-labels" id="arc-labels" hidden></div>
+        <button class="fx-btn" id="fx-btn" aria-expanded="false" title="Visual layers"><svg><use href="#i-fx"/></svg><span>Visuals</span></button>
+        <div class="fx-panel" id="fx-panel" hidden>
+          <header><b>Visuals</b><span>Layers over the twin</span></header>
+          <h4>Body</h4>
+          <label class="sw"><input type="checkbox" data-fx="hands" /><i></i><span>Hands &amp; fingers<small>Finger bones, forearm rotation, wrist · camera</small></span></label>
+          <label class="sw"><input type="checkbox" data-fx="firing" /><i></i><span>Muscle firing<small>Light runs along working fibres</small></span></label>
+          <label class="sw"><input type="checkbox" data-fx="deep" /><i></i><span>Deep muscles<small>The layer under the surface</small></span></label>
+          <label class="sw"><input type="checkbox" data-fx="holo" /><i></i><span>Hologram skin<small>A glowing body envelope</small></span></label>
+          <h4>Forces &amp; motion</h4>
+          <label class="sw"><input type="checkbox" data-fx="load" /><i></i><span>Load paths<small>Joint load streaming up the legs</small></span></label>
+          <label class="sw"><input type="checkbox" data-fx="arcs" /><i></i><span>Angle arcs<small>Live protractors at knees, hips, elbows</small></span></label>
+          <label class="sw"><input type="checkbox" data-fx="trails" /><i></i><span>Motion trails<small>Knee and hand paths, centre of mass on the floor</small></span></label>
+          <label class="sw"><input type="checkbox" data-fx="pressure" /><i></i><span>Foot pressure<small>Heat print under each foot</small></span></label>
+          <h4>Views</h4>
+          <label class="sw"><input type="checkbox" data-fx="mirror" /><i></i><span>X-ray mirror<small>The twin over your live video · camera</small></span></label>
+          <label class="sw"><input type="checkbox" data-fx="bullet" /><i></i><span>Bullet-time replay<small>Slow orbiting replay after each rep</small></span></label>
+        </div>
+        <div class="replay-badge" id="replay" hidden><i></i><b>Replay</b><span id="replay-text"></span><button id="replay-skip">Skip</button></div>
         <div class="hint stage-hint" id="stage-hint" hidden></div>
         <div class="ramp-legend" id="ramp-legend"><span>Muscle effort</span><i></i><em>rest</em><em>hard</em></div>
         <button class="focus-exit" id="focus-exit">Exit skeleton only <kbd>F</kbd></button>
@@ -237,6 +257,10 @@
         <li><b>Skeleton.</b> Each bone of the Lenhart 2015 OpenSim full-body model is placed by aligning its real body frame to the
           tracked points, chained joint to joint. The whole skeleton is scaled by one factor from your height, so it keeps adult
           proportions; the points only give directions.</li>
+        <li><b>Hands.</b> With hands on, MediaPipe Hand Landmarker adds 21 points per hand. Each of the model's own finger bones
+          (15 per hand) is aimed along its tracked segment; the radius rolls over the ulna about the model's radioulnar axis to match
+          the knuckle line (pronation and supination), and the wrist angles are the hand against the radius. The hand model file is
+          fetched once from Google's public model store; video still never leaves the device.</li>
         <li><b>Joint angles</b> follow OpenSim's conventions (hip flexion, adduction, rotation; knee flexion; ankle dorsiflexion).</li>
         <li><b>Ground force.</b> The camera has no force plate, so the total ground force is computed from Newton's second law over
           all body segments (mass from your body weight), and shared between the feet by where the centre of pressure falls.</li>
@@ -244,6 +268,9 @@
         <li><b>Muscle effort.</b> Static optimisation shares each leg's joint moments across its 44 muscles, minimising the sum of squared
           activations. Moment arms come from OpenSim; the quadriceps' leverage through the kneecap comes from a solved OpenSim JAM
           knee-bending simulation (0 to 130 degrees). Each muscle's capacity follows its force-length curve.</li>
+        <li><b>Visual layers.</b> Load paths show an estimated compressive joint load: the ground force plus the forces of the
+          muscles crossing each joint, in body weights (a rough index, not a joint contact model). The X-ray mirror fits a scale
+          and offset between the tracked image points and the twin's joints every frame.</li>
         <li><b>Display.</b> The drawn skeleton eases toward each new pose at screen rate (a 45 ms time constant), so motion stays
           continuous between camera frames. Numbers and physics use the pose itself.</li>
       </ol>

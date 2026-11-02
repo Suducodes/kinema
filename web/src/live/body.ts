@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import { interp, type TwinMeta, type V3 } from './assets';
 
 /**
@@ -23,6 +23,8 @@ export interface Frame {
   /** Pelvis height change since calibration from the image (m), when known (jumps), else null. */
   lift: number | null;
   t: number;
+  /** Hand tracking: 21 points per hand (MediaPipe hand order, our axes; only directions are used). */
+  hands?: Partial<Record<Side, THREE.Vector3[]>>;
 }
 
 export interface SegPose { pos: THREE.Vector3; quat: THREE.Quaternion; scale: number }
@@ -30,6 +32,12 @@ export interface SegPose { pos: THREE.Vector3; quat: THREE.Quaternion; scale: nu
 export interface Angles {
   hip_flex: number; hip_add: number; hip_rot: number; knee_flex: number; ankle_flex: number;
   valgus: number; elbow: number;
+  /** Forearm rotation from mid-position (thumb up): + pronation, - supination. */
+  pronation: number;
+  /** Wrist: + palmar flexion, + radial deviation. */
+  wrist_flex: number; wrist_dev: number;
+  /** Finger curl, 0 open hand to 100 fist (NaN without hand tracking). */
+  grip: number;
 }
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -91,12 +99,14 @@ export class Body {
       put(`elbow_${s}`, f(r.humerus.elbow)); put(`wrist_${s}`, f(r.forearm.wrist)); put(`tip_${s}`, f(r.hand.tip));
     }
     for (const k of ['pelvis', 'torso', 'head', 'femur_R', 'femur_L', 'patella_R', 'patella_L', 'tibia_R', 'tibia_L', 'foot_R', 'foot_L',
-      'humerus_R', 'humerus_L', 'forearm_R', 'forearm_L', 'hand_R', 'hand_L']) {
+      'humerus_R', 'humerus_L', 'forearm_R', 'forearm_L', 'radius_R', 'radius_L', 'hand_R', 'hand_L',
+      ...SIDES.flatMap((s) => Object.keys(meta.arm[s].pieces).map((n) => `${n}_${s}`))]) {
       this.seg[k] = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 };
       this.scale[k.replace(/_[RL]$/, '')] = 1;
     }
     this.setHeight(1.72);
-    const z = (): Angles => ({ hip_flex: 0, hip_add: 0, hip_rot: 0, knee_flex: 0, ankle_flex: 0, valgus: 0, elbow: 0 });
+    const z = (): Angles => ({ hip_flex: 0, hip_add: 0, hip_rot: 0, knee_flex: 0, ankle_flex: 0, valgus: 0, elbow: 0,
+      pronation: 0, wrist_flex: 0, wrist_dev: 0, grip: NaN });
     this.angles = { R: z(), L: z() };
   }
 
@@ -251,7 +261,7 @@ export class Body {
 
       // ---- arms
       const iEl = R ? LM.rEl : LM.lEl, iWr = R ? LM.rWr : LM.lWr;
-      const iIdx = R ? LM.rIndex : LM.lIndex, iPk = R ? LM.rPinky : LM.lPinky, iTh = R ? LM.rThumb : LM.lThumb;
+      const iIdx = R ? LM.rIndex : LM.lIndex, iPk = R ? LM.rPinky : LM.lPinky;
       const shoulder = toWorld('torso', R ? r.shoulderR : r.shoulderL);
       const upper = P(iEl).clone().sub(shoulder), fore = P(iWr).clone().sub(P(iEl));
       const ePlane = new THREE.Vector3().crossVectors(upper, fore).normalize();
@@ -260,13 +270,7 @@ export class Body {
       alignQuat(r[`elbow_${s}`], new THREE.Vector3(0, 0, 1), upper, eLat, q);
       place(`humerus_${s}`, shoulder, q, sc.humerus);
       const elbow = toWorld(`humerus_${s}`, r[`elbow_${s}`]);
-      // forearm roll from the hand: thumb is lateral in the anatomical position
-      const thumbSide = P(iTh).clone().sub(P(iPk)).multiplyScalar(R ? 1 : -1);
-      alignQuat(r[`wrist_${s}`], new THREE.Vector3(0, 0, 1), P(iWr).clone().sub(elbow), thumbSide, q);
-      place(`forearm_${s}`, elbow, q, sc.forearm);
-      const wrist = toWorld(`forearm_${s}`, r[`wrist_${s}`]);
-      alignQuat(r[`tip_${s}`], new THREE.Vector3(0, 0, 1), mid(P(iIdx), P(iPk)).sub(wrist), thumbSide, q);
-      place(`hand_${s}`, wrist, q, sc.hand);
+      const wrist = this.placeForearmAndHand(s, elbow, P(iWr), f.hands?.[s], P(iIdx), P(iPk));
       pts[`shoulder_${s}`] = shoulder; pts[`elbow_${s}`] = elbow; pts[`wrist_${s}`] = wrist;
 
       this.computeAngles(s);
@@ -291,6 +295,81 @@ export class Body {
     // error on a planted foot does not take its load away
     for (const s of SIDES) this.contact[s] = this.footMinY[s] < 0.06;
     pts.com = this.centreOfMass();
+  }
+
+  /** Forearm rotation (rad from the model's full supination), kept between frames for continuity. */
+  private prosup: Record<Side, number> = { R: 1.0, L: 1.0 };
+
+  /**
+   * Ulna as a hinge on the humerus; the radius rolls over it about the model's radioulnar axis by the
+   * angle that turns the knuckle line onto the tracked one; the hand sits on the radius, oriented from
+   * the tracked hand (or the pose's hand points), and each finger bone is aimed along its tracked
+   * segment, chained from the knuckles out. Returns the wrist joint centre.
+   */
+  private placeForearmAndHand(s: Side, elbow: THREE.Vector3, wristLM: THREE.Vector3, hand: THREE.Vector3[] | undefined,
+    idxLM: THREE.Vector3, pinkyLM: THREE.Vector3) {
+    const A = this.meta.arm[s], S = this.seg, r = this.ref, Z = new THREE.Vector3(0, 0, 1);
+    const sc = this.scale.forearm, q = new THREE.Quaternion();
+    // ulna: a hinge about the humerus' lateral axis (the forearm turns through the radius, not the ulna)
+    alignQuat(r[`wrist_${s}`], Z, wristLM.clone().sub(elbow), Z.clone().applyQuaternion(S[`humerus_${s}`].quat), q);
+    const U = S[`forearm_${s}`]; U.pos.copy(elbow); U.quat.copy(q); U.scale = sc;
+    // radius: the roll that best turns the model's knuckle line onto the tracked one, about the radioulnar axis
+    const ax = v3(A.prosup.axis).normalize(), piv = v3(A.prosup.pivot);
+    const qR0 = new THREE.Quaternion(...A.radius0.quat), pR0 = v3(A.radius0.pos);
+    const qHR = new THREE.Quaternion(...A.hand_in_radius.quat), pHR = v3(A.hand_in_radius.pos);
+    const kn = A.knuckles, longH = v3(kn.middle).normalize(), latH = v3(kn.index).sub(v3(kn.little));
+    latH.addScaledVector(longH, -latH.dot(longH)).normalize();
+    const latW = hand ? hand[5].clone().sub(hand[17]) : idxLM.clone().sub(pinkyLM);
+    const a = latH.clone().applyQuaternion(qHR).applyQuaternion(qR0), b = latW.clone().applyQuaternion(U.quat.clone().invert());
+    a.addScaledVector(ax, -a.dot(ax)); b.addScaledVector(ax, -b.dot(ax));
+    if (a.lengthSq() > 1e-6 && b.length() > 0.3 * latW.length()) {
+      const phi = Math.atan2(ax.dot(new THREE.Vector3().crossVectors(a, b)), a.dot(b));
+      const prev = this.prosup[s];
+      this.prosup[s] = THREE.MathUtils.clamp(prev + Math.atan2(Math.sin(phi - prev), Math.cos(phi - prev)), -0.5, 3.0);
+    }
+    const qRot = new THREE.Quaternion().setFromAxisAngle(ax, this.prosup[s]);
+    const Rd = S[`radius_${s}`];
+    Rd.quat.copy(U.quat).multiply(qRot).multiply(qR0);
+    Rd.pos.copy(pR0.sub(piv).applyQuaternion(qRot).add(piv).multiplyScalar(sc).applyQuaternion(U.quat).add(U.pos));
+    Rd.scale = sc;
+    const wrist = pHR.clone().multiplyScalar(sc).applyQuaternion(Rd.quat).add(Rd.pos);
+    // hand: wrist -> middle knuckle and the knuckle line
+    const Hd = S[`hand_${s}`];
+    if (hand) alignQuat(v3(kn.middle), latH, hand[9].clone().sub(hand[0]), hand[5].clone().sub(hand[17]), q);
+    else alignQuat(v3(kn.middle), latH, idxLM.clone().add(pinkyLM).multiplyScalar(0.5).sub(wristLM), idxLM.clone().sub(pinkyLM), q);
+    Hd.pos.copy(wrist); Hd.quat.copy(q); Hd.scale = sc;
+    // wrist angles: the hand against where the radius would carry it with a neutral wrist
+    const rel = Rd.quat.clone().multiply(qHR).invert().multiply(Hd.quat);
+    const l2 = longH.clone().applyQuaternion(rel), pal = v3(A.palmar);
+    const Ang = this.angles[s];
+    Ang.wrist_flex = THREE.MathUtils.radToDeg(Math.atan2(l2.dot(pal), l2.dot(longH)));
+    Ang.wrist_dev = THREE.MathUtils.radToDeg(Math.atan2(l2.dot(latH), l2.dot(longH)));
+    Ang.pronation = THREE.MathUtils.radToDeg(this.prosup[s]) - 90;
+    // fingers, chained from the knuckles out; without hand tracking they keep the model's resting curl
+    for (const chain of Object.values(A.chains)) {
+      let prev: { pos: THREE.Vector3; quat: THREE.Quaternion; origin: THREE.Vector3 } | null = null;
+      for (const name of chain) {
+        const pc = A.pieces[name], seg = S[`${name}_${s}`], origin = v3(pc.origin);
+        seg.scale = sc;
+        seg.pos.copy(prev ? origin.clone().sub(prev.origin).multiplyScalar(sc).applyQuaternion(prev.quat).add(prev.pos)
+          : origin.clone().multiplyScalar(sc).applyQuaternion(Hd.quat).add(Hd.pos));
+        seg.quat.copy(Hd.quat);
+        if (hand) {
+          const rest = v3(pc.tip).sub(origin).normalize().applyQuaternion(Hd.quat);
+          const dir = hand[pc.to].clone().sub(hand[pc.from]);
+          if (dir.lengthSq() > 1e-10) seg.quat.premultiply(new THREE.Quaternion().setFromUnitVectors(rest, dir.normalize()));
+        }
+        prev = { pos: seg.pos, quat: seg.quat, origin };
+      }
+    }
+    if (hand) {
+      let curl = 0;
+      const v = (i: number, j: number) => hand[j].clone().sub(hand[i]);
+      for (const [m, p, d, t] of [[5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]])
+        curl += v(0, m).angleTo(v(m, p)) + v(m, p).angleTo(v(p, d)) + v(p, d).angleTo(v(d, t));
+      Ang.grip = THREE.MathUtils.clamp((THREE.MathUtils.radToDeg(curl / 4) - 20) / 220 * 100, 0, 100);
+    } else Ang.grip = NaN;
+    return wrist;
   }
 
   /** Patella follows knee flexion along the model's coupler path (mirrored for the right leg). */

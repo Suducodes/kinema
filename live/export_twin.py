@@ -1,4 +1,4 @@
-"""Export the full-body twin for the live page (web/public/live/): bones, muscle routes, physics tables.
+﻿"""Export the full-body twin for the live page (web/public/live/): bones, muscle routes, physics tables.
 
 Source: the Lenhart 2015 full-body OpenSim model (opensim-jam, Apache-2.0), loaded through the
 kinematics-only copy (knee/kin_models.py). It has complete standard bones on the LEFT leg and 44
@@ -174,6 +174,97 @@ def apply_state_row(m, s, head, row, keep=lambda n: True):
     m.realizePosition(s)
 
 
+# ----------------------------------------------------------------------------- hands
+# finger bones in tracking order: (mesh stem, piece index, MediaPipe hand landmark from -> to)
+FINGERS = {
+    'thumb': [('metacarpal1', 0, 1, 2), ('thumb_proximal', 1, 2, 3), ('thumb_distal', 2, 3, 4)],
+    'index': [('index_proximal', 0, 5, 6), ('index_medial', 1, 6, 7), ('index_distal', 2, 7, 8)],
+    'middle': [('middle_proximal', 0, 9, 10), ('middle_medial', 1, 10, 11), ('middle_distal', 2, 11, 12)],
+    'ring': [('ring_proximal', 0, 13, 14), ('ring_medial', 1, 14, 15), ('ring_distal', 2, 15, 16)],
+    'little': [('little_proximal', 0, 17, 18), ('little_medial', 1, 18, 19), ('little_distal', 2, 19, 20)],
+}
+PIECE = 'pmd'   # proximal (the thumb's metacarpal), middle, distal
+
+
+def rotation_about(M0, M1):
+    """Axis (unit), angle and a point on the axis of the rigid motion M1 @ inv(M0)."""
+    D = M1 @ np.linalg.inv(M0)
+    R, t = D[:3, :3], D[:3, 3]
+    ang = np.arccos(np.clip((np.trace(R) - 1) / 2, -1, 1))
+    ax = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (2 * np.sin(ang))
+    p = np.linalg.lstsq(np.eye(3) - R, t, rcond=None)[0]   # a point the motion leaves on the axis
+    return ax, ang, p
+
+
+def hand_parts(m, s, sl, meshes):
+    """Hand body split into the rigid palm (carpals, metacarpals 2-5) and 15 aimable finger pieces.
+
+    Each piece's mesh is stored relative to its proximal joint centre, in the hand frame's orientation;
+    its rest direction (proximal -> distal joint) is exported for aiming at run time."""
+    by_file = {}
+    for f, Mfb, scale in meshes:
+        P, N, T = read_vtp(GEO / f)
+        P = P * scale
+        P = (Mfb[:3, :3] @ P.T).T + Mfb[:3, 3]
+        by_file[f.replace('_lvs.vtp', '').replace('_rvs.vtp', '').replace('.vtp', '')] = (P, vertex_normals(P, T), T)
+    finger_files = {stem for chain in FINGERS.values() for stem, *_ in chain}
+    n, Ps, Ns, Ts = 0, [], [], []
+    for k, (P, N, T) in by_file.items():
+        if k in finger_files:
+            continue
+        Ps.append(P); Ns.append(N); Ts.append(T + n); n += len(P)
+    out = {'hand': (np.vstack(Ps), np.vstack(Ns), np.vstack(Ts))}
+    pieces, chains = {}, {}
+    for finger, chain in FINGERS.items():
+        chains[finger] = []
+        for stem, k, a, b in chain:
+            P, N, T = by_file[stem]
+            c = P.mean(0)
+            vt = np.linalg.svd(P - c, full_matrices=False)[2]
+            ax = vt[0] if np.dot(vt[0], c) > 0 else -vt[0]   # pointing away from the wrist (hand origin)
+            proj = (P - c) @ ax
+            L = proj.max() - proj.min()
+            near = lambda end: P[np.abs(proj - end) < 0.12 * L].mean(0)
+            o, tip = near(proj.min()), near(proj.max())
+            name = f'{finger}_{PIECE[k]}'
+            pieces[name] = {'origin': np.round(o, 5).tolist(), 'tip': np.round(tip, 5).tolist(), 'from': a, 'to': b}
+            chains[finger].append(name)
+            out[name] = (P - o, N, T)
+    # hand frame features: wrist at the origin, knuckles, and the palmar side (where the resting fingers curl)
+    mcp = {f: np.array(pieces[f'{f}_p']['origin']) for f in ('index', 'middle', 'little')}
+    tips = np.mean([pieces[f'{f}_d']['tip'] for f in ('index', 'middle', 'ring', 'little')], axis=0)
+    long_ax = mcp['middle'] / np.linalg.norm(mcp['middle'])
+    lat = mcp['index'] - mcp['little']
+    lat = lat - long_ax * np.dot(lat, long_ax)
+    lat /= np.linalg.norm(lat)
+    palmar = np.cross(long_ax, lat)
+    curl = tips - long_ax * np.dot(tips, long_ax)
+    if np.dot(palmar, curl) < 0:
+        palmar = -palmar
+    # forearm: the radius in the ulna frame and its roll axis (pronation/supination); the hand on the radius
+    cs = m.getCoordinateSet().get(f'pro_sup_{sl}')
+    q0 = cs.getValue(s)
+    cs.setValue(s, 0.0, True); M0 = rel(m, s, f'radius_{sl}', f'ulna_{sl}')
+    palm0 = rel(m, s, f'hand_{sl}', f'ulna_{sl}')[:3, :3] @ palmar
+    cs.setValue(s, 0.5, True); M1 = rel(m, s, f'radius_{sl}', f'ulna_{sl}')
+    ax, ang, piv = rotation_about(M0, M1)
+    if ang < 0.4:
+        raise RuntimeError('radioulnar axis estimate failed')
+    cs.setValue(s, q0, True)
+    M_hand_rad = rel(m, s, f'hand_{sl}', f'radius_{sl}')
+    print(f'  {sl}: pro_sup axis {np.round(ax, 3)} (turn {ang:.3f} rad for 0.5), default {q0:.3f}, palm at 0 (ulna frame) {np.round(palm0, 2)}')
+    info = {
+        'radius0': {'pos': np.round(M0[:3, 3], 5).tolist(), 'quat': np.round(quat(M0[:3, :3]), 6).tolist()},
+        'prosup': {'axis': np.round(ax, 5).tolist(), 'pivot': np.round(piv, 5).tolist(), 'default': round(q0, 5),
+                   'range': [0, round(cs.getRangeMax(), 5)], 'palm_at_0': np.round(palm0, 4).tolist()},
+        'hand_in_radius': {'pos': np.round(M_hand_rad[:3, 3], 5).tolist(), 'quat': np.round(quat(M_hand_rad[:3, :3]), 6).tolist()},
+        'knuckles': {k: np.round(v, 5).tolist() for k, v in mcp.items()},
+        'palmar': np.round(palmar, 4).tolist(),
+        'pieces': pieces, 'chains': chains,
+    }
+    return info, out
+
+
 # ----------------------------------------------------------------------------- export
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
@@ -237,12 +328,16 @@ def main():
     for k, v in leg.items():
         seg_mesh[f'{k}_L'] = v
         seg_mesh[f'{k}_R'] = mirrored(v)
+    # arms: ulna (forearm), radius (rolls about the radioulnar axis) and the hand, whose finger bones are
+    # separate pieces so they can be aimed from tracked hand points
+    arm = {}
     for side, sl in (('R', 'r'), ('L', 'l')):
         seg_mesh[f'humerus_{side}'] = body_mesh(f'humerus_{sl}')
-        fa = [body_mesh(f'ulna_{sl}'), body_mesh(f'radius_{sl}', rel(m, s, f'radius_{sl}', f'ulna_{sl}'))]
-        seg_mesh[f'forearm_{side}'] = (np.vstack([fa[0][0], fa[1][0]]), np.vstack([fa[0][1], fa[1][1]]),
-                                       np.vstack([fa[0][2], fa[1][2] + len(fa[0][0])]))
-        seg_mesh[f'hand_{side}'] = body_mesh(f'hand_{sl}')
+        seg_mesh[f'forearm_{side}'] = body_mesh(f'ulna_{sl}')
+        seg_mesh[f'radius_{side}'] = body_mesh(f'radius_{sl}')
+        arm[side], pieces = hand_parts(m, s, sl, by_body[f'hand_{sl}'])
+        for k, v in pieces.items():
+            seg_mesh[f'{k}_{side}'] = v
     write_glb(seg_mesh, OUT / 'twin.glb')
 
     # ---- landmark reference points in each twin segment frame (the browser aligns segments to these)
@@ -254,7 +349,8 @@ def main():
     heel = foot_P[low][np.argmin(foot_P[low][:, 0])]
     toe = foot_P[np.argmax(foot_P[:, 0])]
     skull = body_mesh('neckhead')[0]
-    hand_P = seg_mesh['hand_L'][0]
+    hand_P = np.vstack([seg_mesh['hand_L'][0]] + [seg_mesh[f'{f}_d_L'][0] + np.array(arm['L']['pieces'][f'{f}_d']['origin'])
+                        for f in ('index', 'middle', 'little')])
     ref_L = {
         'pelvis': {'hipR': origin_in('femur_r', 'pelvis'), 'hipL': origin_in('femur_l', 'pelvis'),
                    'lumbar': origin_in('torso', 'pelvis')},
@@ -400,6 +496,7 @@ def main():
         'model_mass': round(model_mass, 2),
         'refs': refs, 'segments': segs, 'axes': axes,
         'patella': {'knee': knee_grid.tolist(), 'pose': patella},
+        'arm': arm,
         'muscles': {'names': list(params), 'params': params, 'routes': routes, 'groups': GROUPS},
         'arms': {'grids': {k: v.tolist() for k, v in grids.items()}, 'r': arms},
     }

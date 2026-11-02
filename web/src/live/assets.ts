@@ -6,6 +6,17 @@ export type V3 = [number, number, number];
 export const COORDS = ['hip_flex', 'hip_add', 'hip_rot', 'knee_flex', 'ankle_flex'] as const;
 export type Coord = (typeof COORDS)[number];
 
+export interface HandPiece { origin: V3; tip: V3; from: number; to: number }
+export interface ArmMeta {
+  radius0: { pos: V3; quat: [number, number, number, number] };
+  prosup: { axis: V3; pivot: V3; default: number; range: [number, number]; palm_at_0: V3 };
+  hand_in_radius: { pos: V3; quat: [number, number, number, number] };
+  knuckles: { index: V3; middle: V3; little: V3 };
+  palmar: V3;
+  pieces: Record<string, HandPiece>;
+  chains: Record<string, string[]>;
+}
+
 export interface SegParams { mass: number; com: V3; I: number[][] }
 export interface MuscleParams { fmax: number; lopt: number; lts: number; penn: number; L0: number; pretty: string }
 
@@ -22,6 +33,8 @@ export interface TwinMeta {
   segments: Record<string, SegParams>;
   axes: { hip: V3[]; knee: V3; ankle: V3 };
   patella: { knee: number[]; pose: number[][] };
+  /** Per side: radius on the ulna (pronation/supination about `prosup.axis`), hand on the radius, finger pieces. */
+  arm: Record<'R' | 'L', ArmMeta>;
   muscles: {
     names: string[];
     params: Record<string, MuscleParams>;

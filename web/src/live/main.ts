@@ -11,6 +11,8 @@ import { Demo, type DemoMove } from './demo';
 import { Tracker, type Facing } from './pose';
 import { Strip } from './strip';
 import { LandmarkSmoother } from './filters';
+import { FX_DEFAULT, type FxFlags } from './fx';
+import type { SegPose } from './body';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const $$ = <T extends HTMLElement>(sel: string) => Array.from(document.querySelectorAll<T>(sel));
@@ -26,7 +28,7 @@ async function main() {
   const stage = new Stage($('stage'), $('stage-wrap'));
   stage.camera.near = 0.05; stage.camera.updateProjectionMatrix();
   stage.controls.minDistance = 0.8; stage.controls.maxDistance = 12; stage.controls.maxPolarAngle = Math.PI * 0.55;
-  const scene = new LiveScene(stage, twin);
+  const scene = new LiveScene(stage, twin, $('arc-labels'));
   const body = new Body(meta), phys = new Physics(meta), coach = new Coach(), demo = new Demo(meta), tracker = new Tracker();
   const smoother = new LandmarkSmoother();   // the demo goes through the same filtering as camera tracking
   // test hook: freeze the demo at a time (s) for inspection
@@ -100,6 +102,8 @@ async function main() {
     cameraButtons(false);
     $$('[data-act="flip"]').forEach((b) => (b.hidden = true));
     hint('');
+    endReplay(false);
+    tracker.handsOn = false; setMirrorView(false);
     setStatus(`Demo · ${move === 'jump' ? 'jump landing' : move}`);
     pickMode(move === 'jump' ? 'jump' : move === 'lunge' ? 'lunge' : 'squat');
     strips.forEach((s) => s.clear());
@@ -129,6 +133,7 @@ async function main() {
       body.calibrated = false; phys.reset(); lastSeen = performance.now() / 1000;
       strips.forEach((s) => s.clear());
       runCalibration();
+      applyFx();
     } catch (e) {
       console.error(e);
       setStatus('Camera unavailable');
@@ -179,6 +184,11 @@ async function main() {
     phys.update(body, f.t);
     coach.update(body, phys, f.t);
     record(f.t);
+    snapshot(f.t);
+    if (coach.reps.length !== repCount) {
+      if (coach.reps.length > repCount && fx.bullet && !mirrorOn) startReplay();
+      repCount = coach.reps.length;
+    }
     fpsTimes.push(now); while (fpsTimes.length && now - fpsTimes[0] > 1) fpsTimes.shift();
     const A = body.angles, kg = phys.mass;
     strips[0].push(f.t, [A.R.knee_flex, A.L.knee_flex, A.R.hip_flex, A.L.hip_flex]);
@@ -348,6 +358,12 @@ async function main() {
   };
   addRows('Joint angles · degrees', rows);
   addRows('Joint moments · N·m/kg', moments);
+  addRows('Arm & hand · degrees', [
+    { label: 'Elbow flexion', get: (s) => body.angles[s].elbow },
+    { label: 'Forearm rotation', unit: '+ pronation, − supination', get: (s) => body.angles[s].pronation },
+    { label: 'Wrist flexion', unit: '+ palmar', get: (s) => body.angles[s].wrist_flex },
+    { label: 'Grip', unit: 'finger curl · hand tracking', get: (s) => body.angles[s].grip, fmt: (v) => (Number.isNaN(v) ? '–' : `${v.toFixed(0)}%`) },
+  ]);
   const ease = (prev: number, next: number) => (Number.isNaN(prev) ? next : prev + (next - prev) * 0.45);
 
   // muscle groups
@@ -412,6 +428,134 @@ async function main() {
     video.style.objectPosition = `${px.toFixed(2)}% ${py.toFixed(2)}%`;
   };
 
+  // ---------- visual layers (each its own switch in the Visuals panel; remembered on this device) ----------
+  let fx: FxFlags = { ...FX_DEFAULT, hands: !phone.matches };
+  try { fx = { ...fx, ...JSON.parse(localStorage.getItem('kinema-live-fx') ?? '{}') }; } catch { /* storage blocked */ }
+  fx.mirror = false;   // the mirror needs the live camera, so every visit starts without it
+  const fxInputs = $$<HTMLInputElement>('input[data-fx]');
+  const applyFx = () => {
+    fxInputs.forEach((i) => (i.checked = fx[i.dataset.fx as keyof FxFlags]));
+    scene.setFlags(fx);
+    tracker.handsOn = fx.hands && source === 'camera';
+    if (tracker.handsOn) tracker.loadHands().catch((e) => { console.error(e); fx.hands = false; applyFx(); toast('The hand model could not load, so hand tracking is off.'); });
+    setMirrorView(fx.mirror && source === 'camera');
+    if (!fx.trails) scene.fx.clearTrails();
+    try { localStorage.setItem('kinema-live-fx', JSON.stringify({ ...fx, mirror: false })); } catch { /* ignore */ }
+  };
+  fxInputs.forEach((i) => i.addEventListener('change', () => {
+    const k = i.dataset.fx as keyof FxFlags;
+    fx[k] = i.checked;
+    if (i.checked && source !== 'camera' && k === 'mirror') toast('X-ray mirror lays the twin over your live video: start the camera to see it.');
+    if (i.checked && source !== 'camera' && k === 'hands') toast('Fingers follow the camera; the demo performer keeps its hands at rest.');
+    if (i.checked && k === 'bullet') toast('After each scored rep, it replays in slow motion. Pick an exercise in the coach.');
+    applyFx();
+  }));
+  // phones: the panel is a sheet above the controls, so it lives at the top level (above both panes)
+  const placeFx = () => (phone.matches ? document.body : $('stage-wrap')).appendChild($('fx-panel'));
+  phone.addEventListener('change', placeFx); placeFx();
+  const fxPanel = (open: boolean) => { $('fx-panel').hidden = !open; $('fx-btn').setAttribute('aria-expanded', String(open)); };
+  $('fx-btn').onclick = () => fxPanel($('fx-panel').hidden);
+  document.addEventListener('pointerdown', (e) => {
+    if (!$('fx-panel').hidden && !(e.target as HTMLElement).closest('#fx-panel, #fx-btn')) fxPanel(false);
+  });
+
+  // angle labels follow their arcs on screen (flipped with the canvas when it is mirrored)
+  const lp = new THREE.Vector3();
+  const placeLabels = () => {
+    const el = stage.renderer.domElement, w = el.clientWidth, h = el.clientHeight, cam3 = stage.override ?? stage.camera;
+    const flipped = document.body.classList.contains('camera-on') && document.body.classList.contains('mirror');
+    for (const a of scene.fx.labels) {
+      lp.copy(a.at).project(cam3);
+      const x = (lp.x * 0.5 + 0.5) * w, y = (-lp.y * 0.5 + 0.5) * h;
+      a.label.style.transform = `translate(${(flipped ? w - x : x).toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
+      a.label.style.opacity = lp.z < 1 ? '1' : '0';
+    }
+  };
+
+  // X-ray mirror: the twin drawn over the live video, fitted to the person every frame
+  let mirrorOn = false, prevLook: Look = 'muscles';
+  const fit = { k: 0, cx: 0, cy: 0 };
+  const setMirrorView = (on: boolean) => {
+    if (on === mirrorOn) return;
+    mirrorOn = on;
+    document.body.classList.toggle('mirror-on', on);
+    scene.setMirror(on ? video : null);
+    fit.k = 0;
+    if (on) { prevLook = scene.look; setLook('xray'); } else { setLook(prevLook); goView(view, true); }
+  };
+  const MIRROR_PAIRS: [number, string][] = [[12, 'shoulder_R'], [11, 'shoulder_L'], [14, 'elbow_R'], [13, 'elbow_L'], [16, 'wrist_R'], [15, 'wrist_L'],
+    [24, 'hip_R'], [23, 'hip_L'], [26, 'knee_R'], [25, 'knee_L'], [28, 'ankle_R'], [27, 'ankle_L']];
+  /** Least squares for image pixel = (cx + k X, cy - k Y) over the joints seen well. */
+  const fitMirror = (img: { x: number; y: number; v: number }[]) => {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw) return;
+    const P = MIRROR_PAIRS.filter(([i, k]) => img[i].v > 0.6 && body.pts[k]).map(([i, k]) => [img[i].x * vw, img[i].y * vh, body.pts[k].x, body.pts[k].y]);
+    if (P.length < 4) return;
+    const m = [0, 1, 2, 3].map((c) => P.reduce((a, r) => a + r[c], 0) / P.length);
+    let num = 0, den = 0;
+    for (const [px, py, X, Y] of P) { num += (px - m[0]) * (X - m[2]) - (py - m[1]) * (Y - m[3]); den += (X - m[2]) ** 2 + (Y - m[3]) ** 2; }
+    const k = num / (den || 1);
+    if (!(k > 0)) return;
+    const a = fit.k ? 0.25 : 1;
+    fit.k += (k - fit.k) * a; fit.cx += (m[0] - k * m[2] - fit.cx) * a; fit.cy += (m[1] + k * m[3] - fit.cy) * a;
+  };
+
+  // bullet-time: the last seconds are kept as snapshots; after a scored rep, they replay in slow motion
+  // while the camera orbits (tracking keeps running underneath)
+  type Snap = { t: number; seg: Float32Array; act: Record<Side, Float32Array>; force: Record<Side, Float32Array>; grf: Record<Side, THREE.Vector3>; cop: Record<Side, THREE.Vector3>; com: THREE.Vector3 };
+  const segKeys = Object.keys(body.seg), snaps: Snap[] = [];
+  let repCount = 0;
+  const snapshot = (t: number) => {
+    const seg = new Float32Array(segKeys.length * 8);
+    segKeys.forEach((k, i) => { const p = body.seg[k]; seg.set([p.pos.x, p.pos.y, p.pos.z, p.quat.x, p.quat.y, p.quat.z, p.quat.w, p.scale], i * 8); });
+    const per = <T>(f: (s: Side) => T) => ({ R: f('R'), L: f('L') });
+    snaps.push({ t, seg, act: per((s) => phys.res[s].act.slice()), force: per((s) => phys.res[s].force.slice()),
+      grf: per((s) => phys.res[s].grf.clone()), cop: per((s) => phys.res[s].cop.clone()), com: body.pts.com.clone() });
+    while (snaps.length && t - snaps[0].t > 5) snaps.shift();
+  };
+  const ghost = { seg: {} as Record<string, SegPose>, pts: { com: new THREE.Vector3() } as Record<string, THREE.Vector3>, contact: { R: true, L: true } as Record<Side, boolean>, ref: body.ref };
+  const ghostPhys = { res: { R: { act: new Float32Array(), force: new Float32Array(), grf: new THREE.Vector3(), cop: new THREE.Vector3() },
+    L: { act: new Float32Array(), force: new Float32Array(), grf: new THREE.Vector3(), cop: new THREE.Vector3() } }, bodyWeight: phys.bodyWeight };
+  let replay: { frames: Snap[]; t: number; span: number; az0: number; r: number; h: number } | null = null;
+  const SLOW = 0.32;
+  const startReplay = () => {
+    const rep = coach.reps[coach.reps.length - 1];
+    const span = THREE.MathUtils.clamp((rep.down || 0) + (rep.up || 0) + 0.7, 1.4, 4.2);
+    const tEnd = snaps[snaps.length - 1]?.t ?? 0, frames = snaps.filter((x) => x.t >= tEnd - span);
+    if (frames.length < 10) return;
+    const off = stage.camera.position.clone().sub(stage.controls.target);
+    replay = { frames, t: 0, span: frames[frames.length - 1].t - frames[0].t, az0: Math.atan2(off.x, off.z), r: Math.hypot(off.x, off.z), h: off.y };
+    stage.controls.enabled = false; stage.controls.autoRotate = false;
+    $('replay').hidden = false;
+    $('replay-text').textContent = `Rep ${rep.n} · depth ${rep.depth.toFixed(0)}° · ${SLOW}× speed`;
+  };
+  const endReplay = (restore = true) => {
+    if (!replay) return;
+    replay = null; $('replay').hidden = true;
+    stage.controls.enabled = !mirrorOn;
+    if (restore) goView(view);
+  };
+  $('replay-skip').onclick = () => endReplay();
+  const playReplay = (dt: number) => {
+    const R = replay!;
+    R.t += dt * SLOW;
+    if (R.t >= R.span) { endReplay(); scene.update(body, phys, showForces, dt); return; }
+    const t0 = R.frames[0].t + R.t;
+    const f = R.frames.find((x) => x.t >= t0) ?? R.frames[R.frames.length - 1];
+    segKeys.forEach((k, i) => {
+      const d = (ghost.seg[k] ??= { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 }), a = f.seg;
+      d.pos.set(a[i * 8], a[i * 8 + 1], a[i * 8 + 2]); d.quat.set(a[i * 8 + 3], a[i * 8 + 4], a[i * 8 + 5], a[i * 8 + 6]); d.scale = a[i * 8 + 7];
+    });
+    ghost.pts.com.copy(f.com);
+    for (const s of SIDES) Object.assign(ghostPhys.res[s], { act: f.act[s], force: f.force[s], grf: f.grf[s], cop: f.cop[s] });
+    ghostPhys.bodyWeight = phys.bodyWeight;
+    scene.update(ghost, ghostPhys, showForces, dt);
+    // orbit: ease out of the current angle, a little over a quarter turn
+    const u = R.t / R.span, e = u * u * (3 - 2 * u), az = R.az0 + 1.9 * e;
+    stage.camera.position.set(stage.controls.target.x + R.r * Math.sin(az), stage.controls.target.y + R.h, stage.controls.target.z + R.r * Math.cos(az));
+    stage.camera.lookAt(stage.controls.target);
+  };
+
   // ---------- frame loop ----------
   let uiTick = 0;
   const overlay = $<HTMLCanvasElement>('overlay');
@@ -424,12 +568,18 @@ async function main() {
         if (tr) {
           lastImage = tr.image; quality = tr.quality; feet = tr.feet; lastSeen = now / 1000;
           process(tr.frame); follow(tr.image); frameVideo();
-          drawOverlay(overlay, tr.image, coverOffsets(overlay.clientWidth, overlay.clientHeight));
+          if (mirrorOn) fitMirror(tr.image);
+          drawOverlay(overlay, tr.image, coverOffsets(overlay.clientWidth, overlay.clientHeight), tr.handImage);
         } else if (tr === null) overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height);
       }
     }
-    scene.update(body, phys, showForces, dt);
-    if (cam.k < 1) {
+    if (replay) playReplay(dt); else scene.update(body, phys, showForces, dt);
+    if (mirrorOn && fit.k) {
+      const el = stage.renderer.domElement;
+      scene.fitMirror(fit, video.videoWidth, video.videoHeight, el.clientWidth / Math.max(el.clientHeight, 1), body.pts.com.x);
+    }
+    if (fx.arcs) placeLabels();
+    if (cam.k < 1 && !replay) {
       cam.k = Math.min(1, cam.k + dt / 1.1);
       const e = cam.k < 0.5 ? 4 * cam.k ** 3 : 1 - (-2 * cam.k + 2) ** 3 / 2;
       stage.camera.position.lerpVectors(cam.from, cam.to, e); stage.controls.target.lerpVectors(cam.tf, target, e);
@@ -525,6 +675,7 @@ async function main() {
   scene.warm(stage);
   try { selfTest(); } catch (e) { console.error(e); }
   setLook('muscles');
+  applyFx();
   goView('three', true);
   startDemo('squat');
   applySettings();
@@ -535,7 +686,10 @@ async function main() {
   if (!seen && !standalone) $<HTMLDialogElement>('onboard').showModal();
 }
 
-function drawOverlay(cv: HTMLCanvasElement, pts: { x: number; y: number; v: number }[], o: { s: number; vw: number; vh: number; ox: number; oy: number }) {
+const HAND_BONES = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12], [9, 13], [13, 14], [14, 15], [15, 16], [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]];
+
+function drawOverlay(cv: HTMLCanvasElement, pts: { x: number; y: number; v: number }[], o: { s: number; vw: number; vh: number; ox: number; oy: number },
+  hands: Partial<Record<Side, { x: number; y: number }[]>> = {}) {
   const w = cv.clientWidth, h = cv.clientHeight, dpr = Math.min(devicePixelRatio, 2);
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const g = cv.getContext('2d')!;
@@ -550,6 +704,11 @@ function drawOverlay(cv: HTMLCanvasElement, pts: { x: number; y: number; v: numb
   }
   g.fillStyle = '#ffe6a8';
   for (const i of [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]) { if (pts[i].v < 0.4) continue; const [x, y] = P(pts[i]); g.beginPath(); g.arc(x, y, 3.2, 0, Math.PI * 2); g.fill(); }
+  g.lineWidth = 1.4; g.strokeStyle = 'rgba(255,214,150,.9)';
+  for (const h of Object.values(hands)) {
+    if (!h) continue;
+    for (const [a, b] of HAND_BONES) { const [x1, y1] = P(h[a]), [x2, y2] = P(h[b]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+  }
 }
 
 function toast(text: string) {
