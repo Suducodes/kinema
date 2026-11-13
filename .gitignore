@@ -35,3 +35,7 @@ sim/delete_this_to_stop_optimization_*.txt
 knee/vendor/
 knee/runs/*/results/
 knee/runs/run_tests.log
+
+# pilot mode: bundled helper and OpenSim cross-check outputs (regenerable)
+web/scripts/.physics_sample.mjs
+live/samples/

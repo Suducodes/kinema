@@ -8,7 +8,9 @@ import { modelHeight, type Frame } from './body';
  * camera tracker would give (plus a little tracking noise). The angles it was given are returned too,
  * so reconstruction error can be measured.
  */
-export type DemoMove = 'squat' | 'lunge' | 'jump';
+export type DemoMove = 'squat' | 'lunge' | 'jump' | 'protocol';
+/** The pilot protocol's holds: standing, half squat, deep squat, twice (the pilot-mode self-test). */
+export const PROTOCOL_HOLD_S = 6.0, PROTOCOL_LEVELS = [0, 0.52, 1, 0, 0.52, 1];
 
 export interface DemoTruth { knee: [number, number]; hip: [number, number]; ankle: [number, number]; lift: number }
 
@@ -35,6 +37,14 @@ export class Demo {
       p.hip = [96 * d * depth, 93 * d * depth];
       p.ankle = [27 * d * depth, 26 * d * depth];
       p.rot = [cave * d, cave * d * 0.6];
+      p.tilt = 22 * d; p.lumbar = 10 * d;
+      p.armFlex = [5 + 80 * d, 5 + 80 * d]; p.armAbd = [8 - 4 * d, 8 - 4 * d];
+    } else if (this.move === 'protocol') {
+      // 1.4 s to move into each level, then held still (with the tracking noise every frame carries)
+      const k = Math.floor(t / PROTOCOL_HOLD_S), u = t - k * PROTOCOL_HOLD_S;
+      const L = (i: number) => (i < 0 ? 0 : i >= PROTOCOL_LEVELS.length ? 0 : PROTOCOL_LEVELS[i]);
+      const d = L(k - 1) + (L(k) - L(k - 1)) * ease(u / 1.4);
+      p.knee = [104 * d, 102 * d]; p.hip = [94 * d, 92 * d]; p.ankle = [26 * d, 25 * d];
       p.tilt = 22 * d; p.lumbar = 10 * d;
       p.armFlex = [5 + 80 * d, 5 + 80 * d]; p.armAbd = [8 - 4 * d, 8 - 4 * d];
     } else if (this.move === 'lunge') {

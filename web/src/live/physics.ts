@@ -18,7 +18,7 @@ const G = new THREE.Vector3(0, -9.81, 0);
 const DYN = ['pelvis', 'torso', 'head', 'femur_R', 'femur_L', 'tibia_R', 'tibia_L', 'foot_R', 'foot_L',
   'humerus_R', 'humerus_L', 'forearm_R', 'forearm_L', 'hand_R', 'hand_L'];
 /** Allowed residual per coordinate (N m): tight for the sagittal joints, loose for hip rotation (poorly observed). */
-const SIGMA: Record<Coord, number> = { hip_flex: 2, hip_add: 4, hip_rot: 10, knee_flex: 2, ankle_flex: 2 };
+export const SIGMA: Record<Coord, number> = { hip_flex: 2, hip_add: 4, hip_rot: 10, knee_flex: 2, ankle_flex: 2 };
 
 interface SegState {
   m: number; comLocal: THREE.Vector3; Ilocal: THREE.Matrix3;
@@ -28,7 +28,9 @@ interface SegState {
 
 export interface SideResult {
   tau: Record<Coord, number>;          // net joint moment on each coordinate (N m)
-  act: Float32Array;                    // muscle activations 0-1 (meta.muscles.names order)
+  act: Float32Array;                    // muscle activations 0-1 (meta.muscles.names order), lightly smoothed for display
+  actRaw: Float32Array;                 // the optimiser's activations for this frame, unsmoothed (research export)
+  cost: number;                         // optimiser cost: sum a^2 + sum (residual / sigma)^2
   force: Float32Array;                  // muscle force (N)
   residual: Record<Coord, number>;      // moment the muscles could not supply (N m)
   grf: THREE.Vector3; cop: THREE.Vector3;
@@ -74,7 +76,7 @@ export class Physics {
         this.cum[n][c] = out;
       }
     }
-    const blank = (): SideResult => ({ tau: zeros(), act: new Float32Array(this.names.length), force: new Float32Array(this.names.length),
+    const blank = (): SideResult => ({ tau: zeros(), act: new Float32Array(this.names.length), actRaw: new Float32Array(this.names.length), cost: 0, force: new Float32Array(this.names.length),
       residual: zeros(), grf: new THREE.Vector3(), cop: new THREE.Vector3() });
     this.res = { R: blank(), L: blank() };
     this.lfib = { R: new Float64Array(this.names.length), L: new Float64Array(this.names.length) };
@@ -246,11 +248,16 @@ export class Physics {
       for (let i = 0; i < n; i++) produced += arm[j][i] * cap[i] * Math.min(Math.max(a[i], 0), 1);
       r.residual[c] = tau[j] - produced;
     });
+    let cost = 0;
+    COORDS.forEach((c) => (cost += (r.residual[c] / SIGMA[c]) ** 2));
     for (let i = 0; i < n; i++) {
       const v = Math.min(Math.max(a[i], 0), 1);
+      cost += v * v;
+      r.actRaw[i] = v;
       r.act[i] = r.act[i] * 0.35 + v * 0.65;   // a light display smoothing (about one video frame)
       r.force[i] = v * cap[i];
     }
+    r.cost = cost;
   }
 }
 

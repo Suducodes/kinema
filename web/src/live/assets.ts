@@ -44,16 +44,28 @@ export interface TwinMeta {
   arms: { grids: Record<Coord, number[]>; r: Record<string, Record<Coord, number[]>> };
 }
 
-export interface Twin { meta: TwinMeta; geometry: Map<string, THREE.BufferGeometry> }
+export interface Twin {
+  meta: TwinMeta; geometry: Map<string, THREE.BufferGeometry>;
+  /** SHA-256 (hex, first 16 characters) of the two model files, for stamping research exports. */
+  hashes: { json: string; glb: string };
+}
+
+async function sha(buf: ArrayBuffer) {
+  if (!crypto.subtle) return 'unavailable';
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
+  return Array.from(h.slice(0, 8), (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export async function loadTwin(base: string): Promise<Twin> {
-  const [meta, gltf] = await Promise.all([
-    fetch(`${base}live/twin.json`).then((r) => r.json() as Promise<TwinMeta>),
-    new GLTFLoader().loadAsync(`${base}live/twin.glb`),
+  const [jsonBuf, glbBuf] = await Promise.all([
+    fetch(`${base}live/twin.json`).then((r) => r.arrayBuffer()),
+    fetch(`${base}live/twin.glb`).then((r) => r.arrayBuffer()),
   ]);
+  const meta = JSON.parse(new TextDecoder().decode(jsonBuf)) as TwinMeta;
+  const gltf = await new GLTFLoader().parseAsync(glbBuf, `${base}live/`);
   const geometry = new Map<string, THREE.BufferGeometry>();
   gltf.scene.traverse((o) => { if ((o as THREE.Mesh).isMesh) geometry.set(o.name, (o as THREE.Mesh).geometry); });
-  return { meta, geometry };
+  return { meta, geometry, hashes: { json: await sha(jsonBuf), glb: await sha(glbBuf) } };
 }
 
 /** Linear interpolation in a table sampled on an ascending grid (clamped at the ends). */

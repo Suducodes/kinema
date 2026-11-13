@@ -8,11 +8,12 @@ import { Physics } from './physics';
 import { LiveScene, type Look } from './scene';
 import { Coach, type Mode } from './coach';
 import { Demo, type DemoMove } from './demo';
-import { Tracker, type Facing } from './pose';
+import { Tracker, type Facing, type Tracked } from './pose';
 import { Strip } from './strip';
 import { LandmarkSmoother } from './filters';
 import { FX_DEFAULT, type FxFlags } from './fx';
 import type { SegPose } from './body';
+import type { PilotHost } from './pilot';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const $$ = <T extends HTMLElement>(sel: string) => Array.from(document.querySelectorAll<T>(sel));
@@ -556,6 +557,25 @@ async function main() {
     stage.camera.lookAt(stage.controls.target);
   };
 
+  // ---------- pilot measurement mode (separate module, loaded only when opened) ----------
+  let pilotHook: ((tr: Tracked) => void) | null = null;
+  const pilotHost: PilotHost = {
+    twin, stage, body, phys, coach, tracker, video,
+    isCamera: () => source === 'camera',
+    startCamera: () => startCamera(),
+    setProfile: (h, w) => {
+      $<HTMLInputElement>('in-height').value = String(h); $<HTMLInputElement>('in-mass').value = String(w);
+      applySettings(); body.setHeight(h / 100);
+    },
+    setHook: (fn) => { pilotHook = fn; },
+    setMode: (m) => pickMode(m),
+    toast,
+  };
+  const openPilot = async () => { $<HTMLDialogElement>('menu').close(); (await import('./pilot')).openPilot(pilotHost); };
+  actions.pilot = () => void openPilot();
+  $('btn-pilot').onclick = () => void openPilot();
+  (window as unknown as { __pilot: unknown }).__pilot = { host: pilotHost, open: openPilot, load: () => import('./pilot/selftest') };
+
   // ---------- frame loop ----------
   let uiTick = 0;
   const overlay = $<HTMLCanvasElement>('overlay');
@@ -568,6 +588,7 @@ async function main() {
         if (tr) {
           lastImage = tr.image; quality = tr.quality; feet = tr.feet; lastSeen = now / 1000;
           process(tr.frame); follow(tr.image); frameVideo();
+          pilotHook?.(tr);
           if (mirrorOn) fitMirror(tr.image);
           drawOverlay(overlay, tr.image, coverOffsets(overlay.clientWidth, overlay.clientHeight), tr.handImage);
         } else if (tr === null) overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height);

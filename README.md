@@ -32,6 +32,39 @@ It installs as an app (web manifest + service worker; works offline once loaded)
 
 `live/export_twin.py` builds `web/public/live/` (bones GLB, muscle routes, moment-arm tables). Self-check on a synthetic squat: knee 0.5 deg, hip 2.2 deg, ankle 0.7 deg mean error; standing ground force 1.00 body weight.
 
+## Pilot measurement mode (knee-angle validation)
+
+Opt-in screen in the Motion Twin (top bar **Pilot**, or the menu). It collects knee-angle validation data on a laptop webcam
+in about 10 minutes per volunteer, with no goniometer: the reference angle is measured on a clean photo the app saves at
+each hold. Everything stays on the device (IndexedDB); nothing is uploaded.
+
+For the student running it:
+
+1. **Set up.** Laptop on a table at the volunteer's hip height, 2.5 to 3 m away, side-on to their **right** leg. Put small
+   stickers on the right hip (side bony point), knee (side) and ankle (outer bony bump). Open the app, press **Pilot**.
+2. **Volunteer.** Enter a code (P01, P02... suggested; never a name), age, sex, height, weight. Press **Start camera** and
+   adjust until the framing bar turns green (right hip, knee, ankle, foot and head in view; side-on).
+3. **Capture.** Press **Start protocol**. The volunteer holds, in order, A standing straight, B half squat, C deep squat, then
+   all three again. Each hold is captured by itself after the knee stays within ±2° for 3 s (a beep); the app saves a clean
+   photo, an overlay screenshot and the physics of that window. If a hold goes wrong, pick its thumbnail and press **Redo**.
+4. **Measure.** Open **Measure**, enter your rater ID (R1, a second person R2). For each photo click the hip, knee and ankle
+   sticker centres (zoom with the wheel, drag points, arrow keys to nudge). Blind mode hides KINEMA's angle until you save.
+   If a sticker is hidden, press **Stickers not visible** and recapture that hold. **Measure next unmeasured photo** moves on.
+5. **Results.** Once 10 pairs exist the summary appears: bias, SD of differences, 95% limits of agreement, RMSE, MAE,
+   Pearson r, ICC(2,1), a Bland-Altman plot, and the split by position; inter-rater ICC once R2 has measured 10 photos.
+6. **Export** CSV, photos (zip), JSON (with clicked points) and physics (zip) after every session, then use **Delete all
+   pilot data** when the data is safely copied.
+
+Angle convention: knee **flexion**, straight leg = 0. Reference = 180° minus the interior hip-knee-ankle angle on the photo.
+The physics files (one per hold) carry the app's OpenSim-named joint angles, ground force and centre of pressure, joint
+moments, all 44 muscle activations per leg, the optimiser cost, segment poses, the app commit and the model file hashes.
+`live/opensim_crosscheck.py` runs OpenSim Inverse Dynamics and Static Optimization on one such file and compares (see
+the script's header; it lists every way the two computations are not identical). `npm run physics-sample` (in `web/`)
+writes synthetic-performer physics files to `live/samples/` for trying it without a camera.
+
+Self-tests: open `live.html` and run `await (await __pilot.load()).pilotSelfTest(__pilot.host)` in the console: the
+synthetic performer goes through the protocol in front of a synthetic side-on camera (separate database).
+
 ## Status
 
 | Part | State |
