@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 
 // the commit the build came from, stamped into exported research files
 let commit = 'unknown';
-try { commit = execSync('git rev-parse --short HEAD').toString().trim() + (execSync('git status --porcelain').toString().trim() ? '+dirty' : ''); } catch { /* not a git checkout */ }
+try { commit = execSync('git rev-parse --short HEAD').toString().trim() + (execSync('git status --porcelain --untracked-files=no').toString().trim() ? '+dirty' : ''); } catch { /* not a git checkout */ }
 
 // Relative base so the build works from any GitHub Pages sub-path.
 export default defineConfig({
